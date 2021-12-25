@@ -47,6 +47,13 @@ dependencies {
     developmentOnly("org.springframework.boot:spring-boot-devtools")
     runtimeOnly("com.h2database:h2")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
+
+}
+
+configurations.all {
+    exclude("org.springframework.boot", "spring-boot-starter-tomcat")
+    exclude("org.springframework.boot", "spring-boot-starter-logging")
+    exclude("org.springframework.boot", "logback-classic")
 }
 
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
