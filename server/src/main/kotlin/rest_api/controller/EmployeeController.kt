@@ -1,3 +1,4 @@
+/*
 package com.example.api.controller
 
 import com.example.api.repository.model.Employee
@@ -10,9 +11,11 @@ import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestBody
 
+*/
 /**
  * Controller for REST API endpoints
- */
+ *//*
+
 @RestController
 class EmployeeController(private val employeeService: EmployeeService) {
 
@@ -33,4 +36,4 @@ class EmployeeController(private val employeeService: EmployeeService) {
     @DeleteMapping("/employees/{id}")
     fun deleteEmployeesById(@PathVariable("id") employeeId: Long): Unit =
             employeeService.deleteEmployeesById(employeeId)
-}
+}*/
