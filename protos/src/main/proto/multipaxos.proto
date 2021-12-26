@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+import "google/protobuf/empty.proto";
+
 option java_multiple_files = true;
 option java_package = "cs236351.multipaxos";
 //option java_outer_classname = "PaxosProtocol";
@@ -46,4 +48,11 @@ message Commit {
   bytes value = 1;
   int32 instance_no = 3;
 }
+service MultiPaxosAcceptorService {
+  rpc DoPrepare(Prepare) returns (Promise) {}
+  rpc DoAccept(Accept) returns (Accepted) {}
+}
 
+service MultiPaxosLearnerService {
+  rpc DoCommit(Commit) returns (google.protobuf.Empty) {}
+}
