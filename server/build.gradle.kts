@@ -51,7 +51,7 @@ dependencies {
 }
 
 configurations.all {
-    exclude("org.springframework.boot", "spring-boot-starter-tomcat")
+    //exclude("org.springframework.boot", "spring-boot-starter-tomcat")
     exclude("org.springframework.boot", "spring-boot-starter-logging")
     exclude("org.springframework.boot", "logback-classic")
 }
