@@ -17,17 +17,17 @@ import org.springframework.web.bind.annotation.RequestBody
 class TransactionController(private val transactionService: TransactionService) {
 
     @GetMapping("/transactions")
-    fun getAllTransactions(): List<Transaction> = transactionService.getAllTransactions()
+    fun getAllTransactions(): ArrayList<Transaction>? = transactionService.getAllTransactions()
 
     @GetMapping("/transactions/{id}")
-    fun getTransactionById(@PathVariable("id") txId: Long): Transaction =
+    fun getTransactionById(@PathVariable("id") txId: Long): Transaction? =
         transactionService.getTransactionById(txId)
 
     @PostMapping("/transactions")
-    fun createTransaction(@RequestBody payload: Transaction): Transaction = transactionService.createTransaction(payload)
+    fun createTransaction(@RequestBody payload: Transaction): Unit = transactionService.createTransaction(payload)
 
     @PutMapping("/transactions/{id}")
-    fun updateTransactionById(@PathVariable("id") txId: Long, @RequestBody payload: Transaction): Transaction =
+    fun updateTransactionById(@PathVariable("id") txId: Long, @RequestBody payload: Transaction): Unit =
         transactionService.updateTransactionById(txId, payload)
 
     @DeleteMapping("/transactions/{id}")

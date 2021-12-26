@@ -1,3 +1,4 @@
+/*
 package com.example.api.repository.model
 
 import com.fasterxml.jackson.annotation.JsonProperty
@@ -9,9 +10,11 @@ import javax.persistence.GenerationType
 import javax.persistence.Id
 import javax.persistence.Table
 
+*/
 /**
  * Represents the database entity for storing the employee details.
- */
+ *//*
+
 @Entity
 @Table(name = "employee")
 data class Employee(
@@ -32,4 +35,4 @@ data class Employee(
         val dayOfBirth: LocalDate,
 
         //val hi: Int
-)
+)*/

@@ -17,7 +17,7 @@ class TransactionService(private val transactionRepository: TransactionRepositor
      *
      * @return the list
      */
-    fun getAllTransactions(): List<Transaction> = transactionRepository.findAll()
+    fun getAllTransactions(): ArrayList<Transaction>? = transactionRepository.getTxMap()
 
     /**
      * Gets employees by id.
@@ -26,8 +26,7 @@ class TransactionService(private val transactionRepository: TransactionRepositor
      * @return the employee by id
      * @throws EmployeeNotFoundException the employee not found exception
      */
-    fun getTransactionById(employeeId: Long): Transaction = transactionRepository.findById(employeeId)
-        .orElseThrow { EmployeeNotFoundException(HttpStatus.NOT_FOUND, "No matching employee was found") }
+    fun getTransactionById(id: Long): Transaction? = transactionRepository.getTx(id)
 
     /**
      * Create employee.
@@ -35,7 +34,7 @@ class TransactionService(private val transactionRepository: TransactionRepositor
      * @param employee the employee
      * @return the employee
      */
-    fun createTransaction(transaction: Transaction): Transaction = transactionRepository.save(transaction)
+    fun createTransaction(transaction: Transaction): Unit = transactionRepository.insertTx(transaction)
 
     /**
      * Update employee.
@@ -45,15 +44,9 @@ class TransactionService(private val transactionRepository: TransactionRepositor
      * @return the employee
      * @throws EmployeeNotFoundException the employee not found exception
      */
-    fun updateTransactionById(txId: Long, transaction: Transaction): Transaction {
-        return if (transactionRepository.existsById(txId)) {
-            transactionRepository.save(
-                Transaction(
-                    id = transaction.id,
-                    inputs = transaction.inputs,
-                    outputs = transaction.outputs
-                )
-            )
+    fun updateTransactionById(txId: Long, transaction: Transaction) {
+        return if (transactionRepository.exsitsTx(txId)) {
+            transactionRepository.insertTx(transaction)
         } else throw EmployeeNotFoundException(HttpStatus.NOT_FOUND, "No matching employee was found")
     }
 
@@ -65,8 +58,8 @@ class TransactionService(private val transactionRepository: TransactionRepositor
      * @throws EmployeeNotFoundException the employee not found exception
      */
     fun deleteTransactionById(txId: Long) {
-        return if (transactionRepository.existsById(txId)) {
-            transactionRepository.deleteById(txId)
+        return if (transactionRepository.exsitsTx(txId)) {
+            transactionRepository.deleteTx(txId)
         } else throw EmployeeNotFoundException(HttpStatus.NOT_FOUND, "No matching employee was found")
     }
 }
