@@ -17,7 +17,7 @@ object TxClient {
                 .setName("Baeldung")
                 .build()
         )
-        System.out.println(helloResponse)
+        println(helloResponse)
         channel.shutdown()
     }
 }
