@@ -1,4 +1,5 @@
-package com.example.api.repository.model
+/*
+package grpc_service
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect
 import java.io.Serializable
@@ -20,9 +21,12 @@ class UTxO : Serializable {
 class Transaction(var id: Long, var inputs: List<UTxO>, var outputs: List<Transfer>) {
 }
 
+*/
 /**
  * Represents the database entity for storing the employee details.
  *//*
+*/
+/*
 @Entity
 @Table(name = "transaction")
 data class Transaction (

@@ -1,9 +1,8 @@
 package grpc_service
 
+import com.google.protobuf.Empty
+import cs236351.txservice.*
 import io.grpc.ManagedChannelBuilder
-import cs236351.txservice.HelloReply
-import cs236351.txservice.HelloRequest
-import cs236351.txservice.MyServiceGrpc
 
 object TxClient {
     @JvmStatic
@@ -11,13 +10,16 @@ object TxClient {
         val channel = ManagedChannelBuilder.forAddress("localhost", 8090)
             .usePlaintext()
             .build()
-        val stub: MyServiceGrpc.MyServiceBlockingStub = MyServiceGrpc.newBlockingStub(channel)
-        val helloResponse: HelloReply = stub.sayHello(
-            HelloRequest.newBuilder()
-                .setName("Baeldung")
-                .build()
-        )
-        println(helloResponse)
+        val stub: GrpcServiceGrpc.GrpcServiceBlockingStub = GrpcServiceGrpc.newBlockingStub(channel)
+        val txId : TxId = TxId.newBuilder().setId(1).build()
+        val tx : Transaction = Transaction.newBuilder()
+            .setTxId(txId)
+            .addInputs(Utxo.newBuilder().setTxId(txId).setAddress("1"))
+            .addOutputs(Transfer.newBuilder().setAddress("2").setAmount(3))
+            .build()
+        stub.insertTx(tx)
+        val response : TransactionList = stub.getAllTx(Empty.newBuilder().build())
+        println(response)
         channel.shutdown()
     }
 }
