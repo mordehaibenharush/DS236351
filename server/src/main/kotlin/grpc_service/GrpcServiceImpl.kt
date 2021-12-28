@@ -4,11 +4,11 @@ import com.google.protobuf.Empty
 import cs236351.txservice.Exists
 import io.grpc.stub.StreamObserver
 import cs236351.txservice.Transaction
-import cs236351.txservice.GrpcServiceGrpc.GrpcServiceImplBase
+import cs236351.txservice.TxServiceGrpc.TxServiceImplBase
 import cs236351.txservice.TransactionList
 import cs236351.txservice.TxId
 
-class GrpcServiceImpl : GrpcServiceImplBase() {
+class GrpcServiceImpl : TxServiceImplBase() {
     private val transactionRepository: TransactionRepository = TransactionRepository()
 
     override fun insertTx(request: Transaction, responseObserver: StreamObserver<Empty>) {
@@ -31,7 +31,7 @@ class GrpcServiceImpl : GrpcServiceImplBase() {
 
     override fun getAllTx(request: Empty, responseObserver: StreamObserver<TransactionList>) {
         var transactionListBuilder : TransactionList.Builder = TransactionList.newBuilder()
-        transactionListBuilder.addAllTxs(transactionRepository.getTxMap())
+        transactionListBuilder.addAllTxList(transactionRepository.getTxMap())
         val response: TransactionList = transactionListBuilder.build()
         responseObserver.onNext(response)
         responseObserver.onCompleted()

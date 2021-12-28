@@ -5,16 +5,10 @@ import java.io.Serializable
 import javax.persistence.*
 
 @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
-class Transfer : Serializable {
-    var address: String? = null
-    var amount: Long? = null
-}
+class Transfer(var address: String, var amount: Long) : Serializable
 
 @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
-class UTxO : Serializable {
-    var txId: Long? = null
-    var address: String? = null
-}
+class UTxO(var txId: Long, var address: String) : Serializable
 
 @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
 class Transaction(var id: Long, var inputs: List<UTxO>, var outputs: List<Transfer>) {
