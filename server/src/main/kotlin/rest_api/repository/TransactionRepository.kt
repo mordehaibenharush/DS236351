@@ -15,7 +15,7 @@ class TransactionRepository {
         txMap.remove(txId)
     }
 
-    fun exsitsTx(txId: Long): Boolean {
+    fun existsTx(txId: Long): Boolean {
         return txMap.contains(txId)
     }
 

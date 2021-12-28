@@ -2,6 +2,7 @@ package com.example.api.controller
 
 import com.example.api.repository.model.Transaction
 import com.example.api.service.TransactionService
+import grpc_service.TxClient
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
@@ -17,20 +18,22 @@ import org.springframework.web.bind.annotation.RequestBody
 class TransactionController(private val transactionService: TransactionService) {
 
     @GetMapping("/transactions")
-    fun getAllTransactions(): ArrayList<Transaction>? = transactionService.getAllTransactions()
+    fun getAllTransactions(): ArrayList<Transaction>? =
+        TxClient.getAllTransactions()
 
     @GetMapping("/transactions/{id}")
     fun getTransactionById(@PathVariable("id") txId: Long): Transaction? =
-        transactionService.getTransactionById(txId)
+        TxClient.getTransactionById(txId)
 
     @PostMapping("/transactions")
-    fun createTransaction(@RequestBody payload: Transaction): Unit = transactionService.createTransaction(payload)
+    fun createTransaction(@RequestBody payload: Transaction): Unit =
+        TxClient.createTransaction(payload)
 
     @PutMapping("/transactions/{id}")
     fun updateTransactionById(@PathVariable("id") txId: Long, @RequestBody payload: Transaction): Unit =
-        transactionService.updateTransactionById(txId, payload)
+        TxClient.updateTransactionById(txId, payload)
 
     @DeleteMapping("/transactions/{id}")
     fun deleteTransactionById(@PathVariable("id") txId: Long): Unit =
-        transactionService.deleteTransactionById(txId)
+        TxClient.deleteTransactionById(txId)
 }

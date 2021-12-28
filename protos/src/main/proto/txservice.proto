@@ -1,23 +1,43 @@
 syntax = "proto3";
 
+import "google/protobuf/empty.proto";
+
 option java_multiple_files = true;
 option java_package = "cs236351.txservice";
 
 package cs236351.txservice;
 
-// The greeting service definition.
-service MyService {
-  // Sends a greeting
-  rpc SayHello (HelloRequest) returns (HelloReply) {
-  }
+service TxService {
+  rpc InsertTx (Transaction) returns (google.protobuf.Empty) {}
+  rpc ExistsTx (TxId) returns (Exists) {}
+  rpc GetTx (TxId) returns (Transaction) {}
+  rpc GetAllTx (google.protobuf.Empty) returns (TransactionList) {}
 }
 
-// The request message containing the user's name.
-message HelloRequest {
-  string name = 1;
+message TxId {
+  uint64 id = 1;
 }
 
-// The response message containing the greetings
-message HelloReply {
-  string message = 1;
+message Transfer {
+  string address = 1;
+  uint64 amount = 2;
+}
+
+message Utxo {
+  TxId txId = 1;
+  string address = 2;
+}
+
+message Transaction {
+  TxId txId = 1;
+  repeated Utxo inputs = 2;
+  repeated Transfer outputs = 3;
+}
+
+message TransactionList {
+  repeated Transaction txList = 1;
+}
+
+message Exists {
+  bool exists = 1;
 }

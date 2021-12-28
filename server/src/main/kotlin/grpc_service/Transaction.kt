@@ -1,22 +1,32 @@
-package com.example.api.repository.model
+/*
+package grpc_service
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect
 import java.io.Serializable
 import javax.persistence.*
 
 @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
-class Transfer(var address: String, var amount: Long) : Serializable
+class Transfer : Serializable {
+    var address: String? = null
+    var amount: Long? = null
+}
 
 @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
-class UTxO(var txId: Long, var address: String) : Serializable
+class UTxO : Serializable {
+    var txId: Long? = null
+    var address: String? = null
+}
 
 @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
 class Transaction(var id: Long, var inputs: List<UTxO>, var outputs: List<Transfer>) {
 }
 
+*/
 /**
  * Represents the database entity for storing the employee details.
  *//*
+*/
+/*
 @Entity
 @Table(name = "transaction")
 data class Transaction (
