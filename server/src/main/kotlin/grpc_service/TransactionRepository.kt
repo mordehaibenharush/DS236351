@@ -14,11 +14,11 @@ typealias TimeStamp = Long
 class TransactionRepository {
     private var zk: ZkRepository = ZkRepository()
     var txMap: HashMap<Id, Transaction> = java.util.HashMap<Id, Transaction>()
-    var utxoMap: HashMap<Address, HashMap<Pair<Id, Value>, Utxo>> = HashMap<Address, HashMap<Pair<Id, Value>, Utxo>>()
+    var utxoMap: HashMap<Address, HashMap<Id, Utxo>> = HashMap<Address, HashMap<Id, Utxo>>()
     var txLedger: ArrayList<Pair<TimeStamp, Transaction>> = ArrayList<Pair<TimeStamp, Transaction>>()
 
     init {
-        utxoMap["0.0.0.0"] = hashMapOf(Pair(0.toLong(), Long.MAX_VALUE) to TxClient.utxo(0, "0.0.0.0", Long.MAX_VALUE))
+        utxoMap["0.0.0.0"] = hashMapOf(0.toLong() to TxClient.utxo(0, "0.0.0.0", Long.MAX_VALUE))
     }
 
     fun insertTx(tx: Transaction) {
@@ -51,14 +51,23 @@ class TransactionRepository {
         return ledger
     }
 
-    fun insertUtxo(utxo: Utxo) {
-        if (utxoMap[utxo.address] == null)
-            utxoMap[utxo.address] = HashMap()
-        utxoMap[utxo.address]!![Pair(utxo.txId.id, utxo.value)] = utxo
+    fun existsUtxo(address: Address, txId: Id) : Boolean {
+        if (utxoMap[address] == null)
+            return false
+        return utxoMap[address]!!.contains(txId)
+    }
+
+    fun insertUtxo(txId: Id, address: Address, value: Value) {
+        var existingValue = 0.toLong()
+        if (utxoMap[address] == null)
+            utxoMap[address] = HashMap()
+        if (existsUtxo(address, txId))
+            existingValue = utxoMap[address]!![txId]!!.value
+        utxoMap[address]!![txId] = TxClient.utxo(txId, address, existingValue+value)
     }
 
     fun deleteUtxo(address : Address, utxo: Utxo) {
-        utxoMap[utxo.address]?.remove(Pair(utxo.txId.id, utxo.value))
+        utxoMap[utxo.address]?.remove(utxo.txId.id)
     }
 
     fun getUtxos(address: Address) : ArrayList<Utxo> {
@@ -69,8 +78,8 @@ class TransactionRepository {
 
     fun removeUtxoByValue(address : Address, amount : Value) : Boolean {
         var totalAmount : Value = 0
-        val utxoKeysToRemove : ArrayList<Pair<Id, Value>> = ArrayList<Pair<Id, Value>>()
-        val utxoToAdd : Utxo
+        val utxoKeysToRemove : ArrayList<Id> = ArrayList<Id>()
+
         val utxos = utxoMap[address]?.filterValues { it.value == amount }?.toList()
         if (utxos != null && utxos.isNotEmpty()) {
                 utxoMap[address]?.remove(utxos[0].first)
@@ -91,8 +100,7 @@ class TransactionRepository {
                 utxoMap[address]?.remove(utxoKey)
             }
             if (totalAmount > amount) {
-                utxoToAdd = TxClient.utxo(-1, address, totalAmount - amount)
-                utxoMap[address]!![Pair(utxoToAdd.txId.id, utxoToAdd.value)] = utxoToAdd
+                insertUtxo(-1, address, totalAmount - amount)
             }
             return true
         }

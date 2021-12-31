@@ -37,7 +37,7 @@ class GrpcServiceImpl : TxServiceImplBase() {
     override fun sendTr(request: TrRequest, responseObserver: StreamObserver<Empty>) {
         val res = transactionRepository.removeUtxoByValue(request.source, request.tr.amount)
         if (res)
-            transactionRepository.insertUtxo(TxClient.utxo(-1, request.tr.address, request.tr.amount))
+            transactionRepository.insertUtxo(request.txId.id, request.tr.address, request.tr.amount)
         responseObserver.onNext(TxClient.empty())
         responseObserver.onCompleted()
     }

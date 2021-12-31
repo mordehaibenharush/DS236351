@@ -54,7 +54,8 @@ message Exists {
 
 message TrRequest {
   string source = 1;
-  Transfer Tr = 2;
+  TxId txId = 2;
+  Transfer tr = 3;
 }
 
 message Request {

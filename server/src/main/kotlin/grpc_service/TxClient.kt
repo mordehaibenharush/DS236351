@@ -43,12 +43,12 @@ object TxClient {
         return Empty.newBuilder().build()
     }
 
-    fun request(address: Address) : Request {
+    private fun request(address: Address) : Request {
         return Request.newBuilder().setAddress(address).build()
     }
 
-    fun trRequest(source: Address, Tr: com.example.api.repository.model.Transfer) : TrRequest {
-        return TrRequest.newBuilder().setSource(source).setTr(transfer(Tr.address, Tr.amount)).build()
+    private fun trRequest(source: Address, txId: Id, tr: com.example.api.repository.model.Transfer) : TrRequest {
+        return TrRequest.newBuilder().setSource(source).setTxId(txid(txId)).setTr(transfer(tr.address, tr.amount)).build()
     }
 
     private fun txid(id: Id) : TxId {
@@ -101,10 +101,10 @@ object TxClient {
         return fromClientTransaction(this.stub.getTx(txid(txId)))
     }
 
-    private fun sendTr(tr: com.example.api.repository.model.Transfer) {
+    private fun sendTr(txId: Id, tr: com.example.api.repository.model.Transfer) {
         /*val address = InetAddress.getLocalHost()
         val ip = address.hostAddress*/
-        this.stub.sendTr(trRequest(tr.source, tr))
+        this.stub.sendTr(trRequest(tr.source, txId, tr))
     }
 
     private fun getAllUtxo(address: Address) : ArrayList<UTxO> {
@@ -132,11 +132,11 @@ object TxClient {
     fun submitTransaction(transaction: com.example.api.repository.model.Transaction) {
         this.insertTx(transaction)
         for (tr in transaction.outputs) {
-            this.stub.sendTr(trRequest(tr.source, tr))
+            this.sendTr(transaction.id, tr)
         }
     }
 
-    fun submitTransfer(transfer: com.example.api.repository.model.Transfer) = this.sendTr(transfer)
+    fun submitTransfer(transfer: com.example.api.repository.model.Transfer) = this.sendTr(-1, transfer)
 
     fun updateTransactionById(txId: Long, transaction: com.example.api.repository.model.Transaction) {
         return if (this.existsTx(txId)) {
