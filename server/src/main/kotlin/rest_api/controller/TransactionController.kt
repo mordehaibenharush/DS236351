@@ -1,7 +1,11 @@
 package com.example.api.controller
 
 import com.example.api.repository.model.Transaction
+import com.example.api.repository.model.Transfer
+import com.example.api.repository.model.UTxO
 import com.example.api.service.TransactionService
+import grpc_service.Address
+import grpc_service.Id
 import grpc_service.TxClient
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.bind.annotation.GetMapping
@@ -17,23 +21,35 @@ import org.springframework.web.bind.annotation.RequestBody
 @RestController
 class TransactionController(private val transactionService: TransactionService) {
 
-    @GetMapping("/transactions")
-    fun getAllTransactions(): ArrayList<Transaction>? =
-        TxClient.getAllTransactions()
+    @GetMapping("/transaction")
+    fun getTransactionLedger(): ArrayList<Transaction>? =
+        TxClient.getTransactionLedger()
 
-    @GetMapping("/transactions/{id}")
-    fun getTransactionById(@PathVariable("id") txId: Long): Transaction? =
-        TxClient.getTransactionById(txId)
+    @GetMapping("/transaction/{address}")
+    fun getAllTransactions(@PathVariable("address") address: Address): ArrayList<Transaction>? =
+        TxClient.getAllTransactions(address)
 
-    @PostMapping("/transactions")
-    fun createTransaction(@RequestBody payload: Transaction): Unit =
-        TxClient.createTransaction(payload)
+    @PostMapping("/transaction")
+    fun submitTransaction(@RequestBody payload: Transaction): Unit =
+        TxClient.submitTransaction(payload)
 
-    @PutMapping("/transactions/{id}")
-    fun updateTransactionById(@PathVariable("id") txId: Long, @RequestBody payload: Transaction): Unit =
-        TxClient.updateTransactionById(txId, payload)
+    @GetMapping("/utxo/{address}")
+    fun getAllUtxos(@PathVariable("address") address: Address): ArrayList<UTxO>? =
+        TxClient.getAllUnspentTxOutput(address)
 
-    @DeleteMapping("/transactions/{id}")
-    fun deleteTransactionById(@PathVariable("id") txId: Long): Unit =
-        TxClient.deleteTransactionById(txId)
+    @PostMapping("/transfer")
+    fun submitTransfer(@RequestBody payload: Transfer): Unit =
+        TxClient.submitTransfer(payload)
+
+    /*@GetMapping("/transactions/{id}")
+    fun getTransactionById(@PathVariable("id") txId: Id): Transaction? =
+        TxClient.getTransactionById(txId)*/
+
+    /*@PutMapping("/transactions/{id}")
+    fun updateTransactionById(@PathVariable("id") txId: Id, @RequestBody payload: Transaction): Unit =
+        TxClient.updateTransactionById(txId, payload)*/
+
+    /*@DeleteMapping("/transactions/{id}")
+    fun deleteTransactionById(@PathVariable("id") txId: Id): Unit =
+        TxClient.deleteTransactionById(txId)*/
 }

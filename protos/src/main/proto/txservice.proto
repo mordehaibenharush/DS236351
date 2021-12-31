@@ -9,9 +9,14 @@ package cs236351.txservice;
 
 service TxService {
   rpc InsertTx (Transaction) returns (google.protobuf.Empty) {}
+  rpc deleteTx (TxId) returns (google.protobuf.Empty) {}
   rpc ExistsTx (TxId) returns (Exists) {}
   rpc GetTx (TxId) returns (Transaction) {}
-  rpc GetAllTx (google.protobuf.Empty) returns (TransactionList) {}
+  rpc GetAllTx (Request) returns (TransactionList) {}
+  rpc SendTr (TrRequest) returns (google.protobuf.Empty) {}
+  rpc RedeemTr (TrRequest) returns (UtxoList) {}
+  rpc GetAllUtxo (Request) returns (UtxoList) {}
+  rpc GetLedger (Limit) returns (TransactionList) {}
 }
 
 message TxId {
@@ -26,6 +31,7 @@ message Transfer {
 message Utxo {
   TxId txId = 1;
   string address = 2;
+  uint64 value = 3;
 }
 
 message Transaction {
@@ -38,6 +44,24 @@ message TransactionList {
   repeated Transaction txList = 1;
 }
 
+message UtxoList {
+  repeated Utxo utxoList = 1;
+}
+
 message Exists {
   bool exists = 1;
+}
+
+message TrRequest {
+  string source = 1;
+  Transfer Tr = 2;
+}
+
+message Request {
+  string source = 1;
+  string address = 2;
+}
+
+message Limit {
+  uint64 limit = 1;
 }

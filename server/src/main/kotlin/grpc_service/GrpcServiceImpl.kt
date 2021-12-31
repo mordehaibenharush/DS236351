@@ -1,12 +1,9 @@
 package grpc_service
 
 import com.google.protobuf.Empty
-import cs236351.txservice.Exists
+import cs236351.txservice.*
 import io.grpc.stub.StreamObserver
-import cs236351.txservice.Transaction
 import cs236351.txservice.TxServiceGrpc.TxServiceImplBase
-import cs236351.txservice.TransactionList
-import cs236351.txservice.TxId
 
 class GrpcServiceImpl : TxServiceImplBase() {
     private val transactionRepository: TransactionRepository = TransactionRepository()
@@ -29,9 +26,33 @@ class GrpcServiceImpl : TxServiceImplBase() {
         responseObserver.onCompleted()
     }
 
-    override fun getAllTx(request: Empty, responseObserver: StreamObserver<TransactionList>) {
-        var transactionListBuilder : TransactionList.Builder = TransactionList.newBuilder()
-        transactionListBuilder.addAllTxList(transactionRepository.getTxMap())
+    override fun getAllTx(request: Request, responseObserver: StreamObserver<TransactionList>) {
+        val transactionListBuilder : TransactionList.Builder = TransactionList.newBuilder()
+        transactionListBuilder.addAllTxList(transactionRepository.getTxList(request.address))
+        val response: TransactionList = transactionListBuilder.build()
+        responseObserver.onNext(response)
+        responseObserver.onCompleted()
+    }
+
+    override fun sendTr(request: TrRequest, responseObserver: StreamObserver<Empty>) {
+        val res = transactionRepository.removeUtxoByValue(request.source, request.tr.amount)
+        if (res)
+            transactionRepository.insertUtxo(TxClient.utxo(-1, request.tr.address, request.tr.amount))
+        responseObserver.onNext(TxClient.empty())
+        responseObserver.onCompleted()
+    }
+
+    override fun getAllUtxo(request: Request, responseObserver: StreamObserver<UtxoList>) {
+        val utxoListBuilder : UtxoList.Builder = UtxoList.newBuilder()
+        utxoListBuilder.addAllUtxoList(transactionRepository.getUtxos(request.address))
+        val response: UtxoList = utxoListBuilder.build()
+        responseObserver.onNext(response)
+        responseObserver.onCompleted()
+    }
+
+    override fun getLedger(request: Limit?, responseObserver: StreamObserver<TransactionList>) {
+        val transactionListBuilder : TransactionList.Builder = TransactionList.newBuilder()
+        transactionListBuilder.addAllTxList(transactionRepository.getLedger(null))
         val response: TransactionList = transactionListBuilder.build()
         responseObserver.onNext(response)
         responseObserver.onCompleted()
