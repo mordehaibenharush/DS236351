@@ -62,3 +62,7 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
         jvmTarget = "11"
     }
 }
+
+springBoot {
+    mainClass.set("com.example.api.SpringBootApplicationKt")
+}
