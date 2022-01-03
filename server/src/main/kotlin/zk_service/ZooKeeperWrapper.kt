@@ -20,7 +20,7 @@ class ZookeeperKtClient() : ZooKeeperKt {
 
     private fun initialize() {
         zkConnection = ZkConnection()
-        zk = zkConnection!!.connect("localhost")
+        zk = zkConnection!!.connect("host.docker.internal"/*"navigator.zk.local"*/)
     }
 
     fun closeConnection() {

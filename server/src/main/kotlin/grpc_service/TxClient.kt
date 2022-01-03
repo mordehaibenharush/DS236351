@@ -8,9 +8,6 @@ import io.grpc.ManagedChannelBuilder
 import org.springframework.http.HttpStatus
 import java.net.InetAddress
 
-
-
-
 object TxClient {
     @JvmStatic
     fun main(args: Array<String>) {
