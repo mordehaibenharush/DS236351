@@ -1,4 +1,4 @@
-rootProject.name = "course236351-project-template"
+rootProject.name = "txmanager"
 
 // when running the assemble task, ignore the android & graalvm related subprojects
 if (startParameter.taskRequests.find { it.args.contains("assemble") } == null) {

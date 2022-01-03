@@ -1,6 +1,6 @@
 plugins {
     application
-    kotlin("jvm")// version "1.5.30"
+    kotlin("jvm") // version "1.5.30"
     idea
 
     // val kotlinVersion = "1.4.31"
@@ -47,11 +47,10 @@ dependencies {
     developmentOnly("org.springframework.boot:spring-boot-devtools")
     runtimeOnly("com.h2database:h2")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
-
 }
 
 configurations.all {
-    //exclude("org.springframework.boot", "spring-boot-starter-tomcat")
+    // exclude("org.springframework.boot", "spring-boot-starter-tomcat")
     exclude("org.springframework.boot", "spring-boot-starter-logging")
     exclude("org.springframework.boot", "logback-classic")
 }

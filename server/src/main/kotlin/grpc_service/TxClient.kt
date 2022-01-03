@@ -33,7 +33,9 @@ object TxClient {
     private val stub: TxServiceGrpc.TxServiceBlockingStub
 
     init {
-        val channel = ManagedChannelBuilder.forAddress("localhost", 8090)
+        val address = InetAddress.getLocalHost()
+        val ip = address.hostAddress
+        val channel = ManagedChannelBuilder.forAddress(ip, 8090)
             .usePlaintext()
             .build()
         this.stub = TxServiceGrpc.newBlockingStub(channel)
