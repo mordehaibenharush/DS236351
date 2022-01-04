@@ -1,14 +1,29 @@
 package zk_service
 
+import grpc_service.Address
+import grpc_service.Shard
 import org.apache.zookeeper.CreateMode
 
 typealias TimeStamp = Long
-enum class shards {SHARD1}
 
 class ZkRepository {
     private var zk : ZookeeperKtClient = ZookeeperKtClient()
     private val shardsPath : Array<String> = arrayOf("1",)
     private val globalClockPath : String = "/clock"
+    private val leadersIpPath : String = "/leaders"
+
+    fun updateLeader(shard: Shard, address: Address) {
+        if (!(zk.existsZNodeData(leadersIpPath + shard.toString()))) {
+            zk.createZNodeData(globalClockPath, address.toByteArray(), CreateMode.EPHEMERAL)
+        }
+    }
+
+    fun getLeader(shard: Shard) : Address {
+        if (zk.existsZNodeData(leadersIpPath + shard.toString())) {
+            return zk.getZNodeData(leadersIpPath, false) as String
+        }
+        throw Exception("No leader")
+    }
 
     fun getTimestamp() : TimeStamp {
         val timeStamp : TimeStamp

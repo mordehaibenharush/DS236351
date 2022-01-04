@@ -105,8 +105,7 @@ class ZookeeperKtClient() : ZooKeeperKt {
 
     @Throws(KeeperException::class, InterruptedException::class)
     fun getZNodeData(path: String?, watchFlag: Boolean): Any? {
-        var b: ByteArray?
-        b = zk!!.getData(path, watchFlag, Stat())
+        val b: ByteArray? = zk!!.getData(path, watchFlag, Stat())
         return Charset.availableCharsets()["UTF-8"]?.let { String(b!!, it) }
     }
 

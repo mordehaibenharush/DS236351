@@ -1,0 +1,21 @@
+version: '2'
+
+networks:
+  txmnet:
+
+services:
+  cluster1:
+    image: dstxmanager
+    hostname: cluster1.clusters.local
+    ports:
+    - 8081:8080
+    networks:
+      - txmnet
+
+  cluster2:
+    image: dstxmanager
+    hostname: cluster2.clusters.local
+    ports:
+    - 8082:8080
+    networks:
+      - txmnet

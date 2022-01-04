@@ -4,6 +4,7 @@ import com.example.api.exception.EmployeeNotFoundException
 import com.example.api.repository.model.UTxO
 import com.google.protobuf.Empty
 import cs236351.txservice.*
+import io.grpc.ManagedChannel
 import io.grpc.ManagedChannelBuilder
 import org.springframework.http.HttpStatus
 import java.net.InetAddress
@@ -27,12 +28,23 @@ object TxClient {
         channel.shutdown()
     }
 
-    private val stub: TxServiceGrpc.TxServiceBlockingStub
+    private lateinit var stub: TxServiceGrpc.TxServiceBlockingStub
+    private lateinit var channel: ManagedChannel
+    private val shardRepository: ShardsRepository = ShardsRepository
 
     init {
         val address = InetAddress.getLocalHost()
         val ip = address.hostAddress
-        val channel = ManagedChannelBuilder.forAddress(ip, 8090)
+        /*this.channel = ManagedChannelBuilder.forAddress(ip, 8090)
+            .usePlaintext()
+            .build()
+        this.stub = TxServiceGrpc.newBlockingStub(channel)
+        this.channel.shutdown()*/
+    }
+
+    private fun connectStub(address: Address)  {
+        val ip = shardRepository.getShardLLeaderIp(address)
+        this.channel =  ManagedChannelBuilder.forAddress(ip, 8090)
             .usePlaintext()
             .build()
         this.stub = TxServiceGrpc.newBlockingStub(channel)
@@ -85,7 +97,14 @@ object TxClient {
     }
 
     private fun insertTx(tx: com.example.api.repository.model.Transaction) {
-        this.stub.insertTx(toClientTransaction(tx))
+        try {
+            connectStub(tx.inputs[0].address)
+            stub.insertTx(toClientTransaction(tx))
+        } catch (e: Throwable) {
+            println("### $e ###")
+        } finally {
+            channel.shutdown()
+        }
     }
 
     private fun deleteTx(txId: Id) {
@@ -101,21 +120,55 @@ object TxClient {
     }
 
     private fun sendTr(txId: Id, tr: com.example.api.repository.model.Transfer) {
-        /*val address = InetAddress.getLocalHost()
-        val ip = address.hostAddress*/
-        this.stub.sendTr(trRequest(tr.source, txId, tr))
+        try {
+            connectStub(tr.address)
+            stub.sendTr(trRequest(tr.source, txId, tr))
+        } catch (e: Throwable) {
+        println("### $e ###")
+        } finally {
+            channel.shutdown()
+        }
     }
 
     private fun getAllUtxo(address: Address) : ArrayList<UTxO> {
-        return ArrayList(this.stub.getAllUtxo(request(address)).utxoListList.map { fromClientUtxo(it) })
+        var utxoList : ArrayList<UTxO> = ArrayList()
+        try {
+            connectStub(address)
+            utxoList = ArrayList(stub.getAllUtxo(request(address)).utxoListList.map { fromClientUtxo(it) })
+        } catch (e: Throwable) {
+            println("### $e ###")
+        } finally {
+            channel.shutdown()
+        }
+        return utxoList
     }
 
     private fun getAllTx(address: Address): ArrayList<com.example.api.repository.model.Transaction> {
-        return ArrayList(this.stub.getAllTx(request(address)).txListList.map { fromClientTransaction(it) })
+        var txList : ArrayList<com.example.api.repository.model.Transaction> = ArrayList()
+        try {
+            connectStub(address)
+            txList = ArrayList(stub.getAllTx(request(address)).txListList.map { fromClientTransaction(it) })
+        } catch (e: Throwable) {
+            println("### $e ###")
+        } finally {
+            channel.shutdown()
+        }
+        return txList
     }
 
     private fun getLedger() : ArrayList<com.example.api.repository.model.Transaction> {
-        return ArrayList(this.stub.getLedger(null).txListList.map { fromClientTransaction(it) })
+        val ledger = ArrayList<com.example.api.repository.model.Transaction>()
+        try {
+            for (ip in shardRepository.ips) {
+                connectStub(ip)
+                ledger += ArrayList(stub.getLedger(null).txListList.map { fromClientTransaction(it) })
+            }
+        } catch (e: Throwable) {
+            println("### $e ###")
+        } finally {
+            channel.shutdown()
+        }
+        return ledger
     }
 
     /** ###################################### API FUNCTIONS ###################################### **/
