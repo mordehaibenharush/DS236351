@@ -10,6 +10,10 @@ class GrpcServiceImpl : TxServiceImplBase() {
 
     override fun insertTx(request: Transaction, responseObserver: StreamObserver<Empty>) {
         transactionRepository.insertTx(request)
+        for (tr in request.outputsList) {
+            TxClient.sendTr(request.txId.id, request.inputsList[0].address, tr)
+            /*transactionRepository.removeUtxoByValue(request.inputsList[0].address, tr.amount)*/
+        }
         responseObserver.onNext(Empty.newBuilder().build())
         responseObserver.onCompleted()
     }
@@ -35,9 +39,14 @@ class GrpcServiceImpl : TxServiceImplBase() {
     }
 
     override fun sendTr(request: TrRequest, responseObserver: StreamObserver<Empty>) {
-        val res = transactionRepository.removeUtxoByValue(request.source, request.tr.amount)
-        if (res)
-            transactionRepository.insertUtxo(request.txId.id, request.tr.address, request.tr.amount)
+        transactionRepository.insertUtxo(request.txId.id, request.tr.address, request.tr.amount)
+        TxClient.removeUtxo(request)
+        responseObserver.onNext(TxClient.empty())
+        responseObserver.onCompleted()
+    }
+
+    override fun removeUtxo(request: TrRequest, responseObserver: StreamObserver<Empty>) {
+        transactionRepository.removeUtxoByValue(request.source, request.tr.amount)
         responseObserver.onNext(TxClient.empty())
         responseObserver.onCompleted()
     }

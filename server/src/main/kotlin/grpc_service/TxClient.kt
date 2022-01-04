@@ -8,6 +8,8 @@ import io.grpc.ManagedChannel
 import io.grpc.ManagedChannelBuilder
 import org.springframework.http.HttpStatus
 import java.net.InetAddress
+import java.util.*
+import kotlin.collections.ArrayList
 
 object TxClient {
     @JvmStatic
@@ -28,8 +30,9 @@ object TxClient {
         channel.shutdown()
     }
 
-    private lateinit var stub: TxServiceGrpc.TxServiceBlockingStub
-    private lateinit var channel: ManagedChannel
+    lateinit var stub: TxServiceGrpc.TxServiceBlockingStub
+    var channelStack: Stack<ManagedChannel> = Stack()
+    lateinit var channel: ManagedChannel
     private val shardRepository: ShardsRepository = ShardsRepository
 
     init {
@@ -42,12 +45,18 @@ object TxClient {
         this.channel.shutdown()*/
     }
 
-    private fun connectStub(address: Address)  {
+    fun connectStub(address: Address)  {
         val ip = shardRepository.getShardLLeaderIp(address)
-        this.channel =  ManagedChannelBuilder.forAddress(ip, 8090)
+        val channel =  ManagedChannelBuilder.forAddress(ip, 8090)
             .usePlaintext()
             .build()
         this.stub = TxServiceGrpc.newBlockingStub(channel)
+        channelStack.push(channel)
+    }
+
+    fun disconnectStub() {
+        if (channelStack.isNotEmpty())
+            channelStack.pop().shutdown()
     }
 
     fun empty() : Empty {
@@ -58,8 +67,12 @@ object TxClient {
         return Request.newBuilder().setAddress(address).build()
     }
 
-    private fun trRequest(source: Address, txId: Id, tr: com.example.api.repository.model.Transfer) : TrRequest {
+    fun trRequest(source: Address, txId: Id, tr: com.example.api.repository.model.Transfer) : TrRequest {
         return TrRequest.newBuilder().setSource(source).setTxId(txid(txId)).setTr(transfer(tr.address, tr.amount)).build()
+    }
+
+    fun trRequest(source: Address, txId: Id, tr: Transfer) : TrRequest {
+        return TrRequest.newBuilder().setSource(source).setTxId(txid(txId)).setTr(tr).build()
     }
 
     private fun txid(id: Id) : TxId {
@@ -107,7 +120,7 @@ object TxClient {
         } catch (e: Throwable) {
             println("### $e ###")
         } finally {
-            channel.shutdown()
+            disconnectStub()
         }
     }
 
@@ -123,14 +136,25 @@ object TxClient {
         return fromClientTransaction(this.stub.getTx(txid(txId)))
     }
 
-    private fun sendTr(txId: Id, tr: com.example.api.repository.model.Transfer) {
+    fun sendTr(txId: Id, source: Address, tr: Transfer) {
         try {
             connectStub(tr.address)
-            stub.sendTr(trRequest(tr.source, txId, tr))
+            stub.sendTr(trRequest(source, txId, tr))
         } catch (e: Throwable) {
         println("### $e ###")
         } finally {
-            channel.shutdown()
+            disconnectStub()
+        }
+    }
+
+    fun removeUtxo(trRequest: TrRequest) {
+        try {
+            connectStub(trRequest.source)
+            stub.removeUtxo(trRequest)
+        } catch (e: Throwable) {
+            println("### $e ###")
+        } finally {
+            disconnectStub()
         }
     }
 
@@ -142,7 +166,7 @@ object TxClient {
         } catch (e: Throwable) {
             println("### $e ###")
         } finally {
-            channel.shutdown()
+            disconnectStub()
         }
         return utxoList
     }
@@ -155,7 +179,7 @@ object TxClient {
         } catch (e: Throwable) {
             println("### $e ###")
         } finally {
-            channel.shutdown()
+            disconnectStub()
         }
         return txList
     }
@@ -166,11 +190,12 @@ object TxClient {
             for (ip in shardRepository.ips) {
                 connectStub(ip)
                 ledger += ArrayList(stub.getLedger(null).txListList)
+                disconnectStub()
             }
         } catch (e: Throwable) {
             println("### $e ###")
         } finally {
-            channel.shutdown()
+            disconnectStub()
         }
         ledger.sortBy { it.timestamp }
         return ledger.map { fromClientTransaction(it.tx) } as ArrayList<com.example.api.repository.model.Transaction>
@@ -186,14 +211,20 @@ object TxClient {
 
     fun getTransactionLedger(): ArrayList<com.example.api.repository.model.Transaction> = this.getLedger()
 
-    fun submitTransaction(transaction: com.example.api.repository.model.Transaction) {
-        this.insertTx(transaction)
-        for (tr in transaction.outputs) {
-            this.sendTr(transaction.id, tr)
+    fun submitTransaction(tx: com.example.api.repository.model.Transaction) {
+        try {
+            connectStub(tx.inputs[0].address)
+            stub.insertTx(toClientTransaction(tx))
+        } catch (e: Throwable) {
+            println("### $e ###")
+        } finally {
+            disconnectStub()
         }
     }
 
-    fun submitTransfer(transfer: com.example.api.repository.model.Transfer) = this.sendTr(-1, transfer)
+    fun submitTransfer(transfer: com.example.api.repository.model.Transfer) {
+        this.sendTr(-1, transfer.source, transfer(transfer.address, transfer.amount))
+    }
 
     fun updateTransactionById(txId: Long, transaction: com.example.api.repository.model.Transaction) {
         return if (this.existsTx(txId)) {
