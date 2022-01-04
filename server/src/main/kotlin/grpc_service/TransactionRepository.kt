@@ -1,9 +1,6 @@
 package grpc_service
 
-import cs236351.txservice.Limit
-import cs236351.txservice.TxId
-import cs236351.txservice.Utxo
-import cs236351.txservice.Transaction
+import cs236351.txservice.*
 import zk_service.ZkRepository
 
 typealias Id = Long
@@ -13,9 +10,9 @@ typealias TimeStamp = Long
 
 class TransactionRepository {
     private var zk: ZkRepository = ZkRepository()
-    var txMap: HashMap<Id, Transaction> = java.util.HashMap<Id, Transaction>()
-    var utxoMap: HashMap<Address, HashMap<Id, Utxo>> = HashMap<Address, HashMap<Id, Utxo>>()
-    var txLedger: ArrayList<Pair<TimeStamp, Transaction>> = ArrayList<Pair<TimeStamp, Transaction>>()
+    var txMap: HashMap<Id, Transaction> = HashMap()
+    var utxoMap: HashMap<Address, HashMap<Id, Utxo>> = HashMap()
+    var txLedger: ArrayList<LedgerTxEntry> = ArrayList()
 
     init {
         utxoMap["0.0.0.0"] = hashMapOf(0.toLong() to TxClient.utxo(0, "0.0.0.0", Long.MAX_VALUE))
@@ -23,7 +20,7 @@ class TransactionRepository {
 
     fun insertTx(tx: Transaction) {
         txMap[tx.txId.id] = tx
-        txLedger.add(Pair(zk.getTimestamp(), tx))
+        txLedger.add(TxClient.ledgerTxEntry(zk.getTimestamp(), tx))
     }
 
     fun deleteTx(txId: TxId) {
@@ -39,15 +36,13 @@ class TransactionRepository {
     }
 
     fun getTxList(address: Address) : ArrayList<Transaction> {
-        return ArrayList((txLedger
-            .filter { it.second.inputsList[0].address == address }
-            .map { (_, Tr) -> Tr }))
+        return ArrayList((txLedger.filter { it.tx.inputsList[0].address == address }.map { it.tx }))
     }
 
-    fun getLedger(limit : Limit?) : ArrayList<Transaction> {
-        var ledger =  ArrayList(txLedger.map { (_, Tr) -> Tr })
+    fun getLedger(limit : Limit?) : ArrayList<LedgerTxEntry> {
+        var ledger =  txLedger
         if (limit != null)
-            ledger = ledger.takeLast(limit.limit.toInt()) as ArrayList<Transaction>
+            ledger = ledger.takeLast(limit.limit.toInt()) as ArrayList<LedgerTxEntry>
         return ledger
     }
 

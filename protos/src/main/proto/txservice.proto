@@ -16,7 +16,7 @@ service TxService {
   rpc SendTr (TrRequest) returns (google.protobuf.Empty) {}
   rpc RedeemTr (TrRequest) returns (UtxoList) {}
   rpc GetAllUtxo (Request) returns (UtxoList) {}
-  rpc GetLedger (Limit) returns (TransactionList) {}
+  rpc GetLedger (Limit) returns (LedgerTxEntryList) {}
 }
 
 message TxId {
@@ -38,6 +38,15 @@ message Transaction {
   TxId txId = 1;
   repeated Utxo inputs = 2;
   repeated Transfer outputs = 3;
+}
+
+message LedgerTxEntry {
+  uint64 timestamp = 1;
+  Transaction tx = 2;
+}
+
+message LedgerTxEntryList {
+  repeated LedgerTxEntry txList = 1;
 }
 
 message TransactionList {

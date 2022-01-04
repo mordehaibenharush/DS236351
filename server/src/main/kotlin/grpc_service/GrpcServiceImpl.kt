@@ -50,10 +50,10 @@ class GrpcServiceImpl : TxServiceImplBase() {
         responseObserver.onCompleted()
     }
 
-    override fun getLedger(request: Limit?, responseObserver: StreamObserver<TransactionList>) {
-        val transactionListBuilder : TransactionList.Builder = TransactionList.newBuilder()
-        transactionListBuilder.addAllTxList(transactionRepository.getLedger(null))
-        val response: TransactionList = transactionListBuilder.build()
+    override fun getLedger(request: Limit?, responseObserver: StreamObserver<LedgerTxEntryList>) {
+        val ledgerTxEntryListBuilder : LedgerTxEntryList.Builder = LedgerTxEntryList.newBuilder()
+        ledgerTxEntryListBuilder.addAllTxList(transactionRepository.getLedger(null))
+        val response: LedgerTxEntryList = ledgerTxEntryListBuilder.build()
         responseObserver.onNext(response)
         responseObserver.onCompleted()
     }

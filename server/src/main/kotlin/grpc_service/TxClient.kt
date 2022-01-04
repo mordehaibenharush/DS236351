@@ -80,6 +80,10 @@ object TxClient {
         return Transaction.newBuilder().setTxId(txId).addAllInputs(inputs).addAllOutputs(outputs).build()
     }
 
+    fun ledgerTxEntry(timestamp: TimeStamp, tx: Transaction) : LedgerTxEntry {
+        return LedgerTxEntry.newBuilder().setTimestamp(timestamp).setTx(tx).build()
+    }
+
     private fun fromClientUtxo(utxo: Utxo) : UTxO {
         return UTxO(utxo.txId.id, utxo.address, utxo.value)
     }
@@ -157,18 +161,19 @@ object TxClient {
     }
 
     private fun getLedger() : ArrayList<com.example.api.repository.model.Transaction> {
-        val ledger = ArrayList<com.example.api.repository.model.Transaction>()
+        val ledger = ArrayList<LedgerTxEntry>()
         try {
             for (ip in shardRepository.ips) {
                 connectStub(ip)
-                ledger += ArrayList(stub.getLedger(null).txListList.map { fromClientTransaction(it) })
+                ledger += ArrayList(stub.getLedger(null).txListList)
             }
         } catch (e: Throwable) {
             println("### $e ###")
         } finally {
             channel.shutdown()
         }
-        return ledger
+        ledger.sortBy { it.timestamp }
+        return ledger.map { fromClientTransaction(it.tx) } as ArrayList<com.example.api.repository.model.Transaction>
     }
 
     /** ###################################### API FUNCTIONS ###################################### **/
