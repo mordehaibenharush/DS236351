@@ -2,7 +2,6 @@ package zk_service
 
 import org.apache.zookeeper.KeeperException
 import org.apache.zookeeper.data.Stat
-import zk_service.Persistent
 
 interface ZooKeeperNamespacer {
     val namespace: Path

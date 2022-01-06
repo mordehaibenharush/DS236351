@@ -1,7 +1,7 @@
 package grpc_service
 
 import cs236351.txservice.*
-import zk_service.ZkRepository
+//import zk_service.ZkRepository
 
 typealias Id = Long
 typealias Address = String
@@ -9,7 +9,7 @@ typealias Value = Long
 typealias TimeStamp = Long
 
 class TransactionRepository {
-    private var zk: ZkRepository = ZkRepository()
+    //private var zk: ZkRepository = ZkRepository()
     var txMap: HashMap<Id, Transaction> = HashMap()
     var utxoMap: HashMap<Address, HashMap<Id, Utxo>> = HashMap()
     var txLedger: ArrayList<LedgerTxEntry> = ArrayList()
@@ -20,7 +20,7 @@ class TransactionRepository {
 
     fun insertTx(tx: Transaction) {
         txMap[tx.txId.id] = tx
-        txLedger.add(TxClient.ledgerTxEntry(zk.getTimestamp(), tx))
+        txLedger.add(TxClient.ledgerTxEntry(/*zk.getTimestamp()*/-1, tx))
     }
 
     fun deleteTx(txId: TxId) {

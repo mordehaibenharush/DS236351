@@ -1,3 +1,4 @@
+/*
 package zk_service
 
 import grpc_service.Address
@@ -7,7 +8,7 @@ import org.apache.zookeeper.CreateMode
 typealias TimeStamp = Long
 
 class ZkRepository {
-    private var zk : ZookeeperKtClient = ZookeeperKtClient()
+    private var zk : ZookeeperKtClient = ZookeeperKtClient(null)
     private val shardsPath : Array<String> = arrayOf("1",)
     private val globalClockPath : String = "/clock"
     private val leadersIpPath : String = "/leaders"
@@ -36,4 +37,4 @@ class ZkRepository {
         }
         return timeStamp
     }
-}
+}*/
