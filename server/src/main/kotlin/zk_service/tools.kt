@@ -38,3 +38,23 @@ suspend fun withZooKeeper(
     block(ZookeeperKtClient(zk))
     zk.close()
 }
+
+suspend fun withZooKeeperLong(
+    zkConnectionString: String,
+    block: suspend (client: ZooKeeperKt) -> Long,
+) : Long {
+    println("--- Connecting to ZooKeeper @ $zkConnectionString")
+    val chan = Channel<Unit>()
+    val zk = ZooKeeper(zkConnectionString, 1000) { event ->
+        if (event.state == Watcher.Event.KeeperState.SyncConnected &&
+            event.type == Watcher.Event.EventType.None
+        ) {
+            runBlocking { chan.send(Unit) }
+        }
+    }
+    chan.receive()
+    println("--- Connected to ZooKeeper")
+    val res = block(ZookeeperKtClient(zk))
+    zk.close()
+    return res
+}
