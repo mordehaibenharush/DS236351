@@ -45,8 +45,8 @@ object TxClient {
         this.channel.shutdown()*/
     }
 
-    fun connectStub(address: Address)  {
-        val ip = shardRepository.getShardLLeaderIp(address)
+    private fun connectStub(address: Address)  {
+        val ip = shardRepository.getShardLeaderIp(address)
         val channel =  ManagedChannelBuilder.forAddress(ip, 8090)
             .usePlaintext()
             .build()
@@ -54,7 +54,7 @@ object TxClient {
         channelStack.push(channel)
     }
 
-    fun disconnectStub() {
+    private fun disconnectStub() {
         if (channelStack.isNotEmpty())
             channelStack.pop().shutdown()
     }
@@ -187,8 +187,8 @@ object TxClient {
     private fun getLedger() : ArrayList<com.example.api.repository.model.Transaction> {
         val ledger = ArrayList<LedgerTxEntry>()
         try {
-            for (ip in shardRepository.ips) {
-                connectStub(ip)
+            for (ips in shardRepository.ips.values) {
+                connectStub(ips[0])
                 ledger += ArrayList(stub.getLedger(null).txListList)
                 disconnectStub()
             }

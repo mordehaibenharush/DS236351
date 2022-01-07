@@ -1,32 +1,28 @@
 package zk_service
 
-import grpc_service.Address
 import grpc_service.Shard
-import kotlinx.coroutines.CoroutineScope
+import grpc_service.ShardsRepository
+import grpc_service.TxServer
+import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.runBlocking
-import org.apache.log4j.BasicConfigurator
-import org.apache.zookeeper.CreateMode
-import org.apache.zookeeper.Watcher
-import org.apache.zookeeper.ZooKeeper
-import org.springframework.web.servlet.function.ServerResponse.async
+import org.springframework.web.servlet.function.ServerResponse
+import java.net.InetAddress
 
 typealias TimeStamp = Long
 //typealias GetTimestamp = suspend CoroutineScope.(Array<String>, client: ZooKeeperKt) -> TimeStamp
 
-fun main(args: Array<String>) {
-    val tsList = ArrayList<TimeStamp>()
-    for (i in 0..9) {
-        val ts =  ZkRepository.getTimestamp()
-        tsList.add(ts)
-    }
-    println(tsList)
+fun zkmain(args: Array<String>) {
+    val zkr = ZkRepository
+    zkr.join()
+    println("### DONE ###")
 }
 
 object ZkRepository {
     lateinit var zk : ZookeeperKtClient
     lateinit var zkConnection: ZkConnection
+    lateinit var membership: Membership
+    lateinit var queryMembershipJob: Job
+    lateinit var chan: Channel<ZChildren>
     //private val shardsPath : Array<String> = arrayOf("1",)
     private val globalClockPath : String = "/clock/"
     private val leadersIpPath : String = "/leaders/"
@@ -78,14 +74,33 @@ object ZkRepository {
         }
     }*/
 
+    fun getIp(): String {
+        return InetAddress.getLocalHost().hostAddress
+    }
+
     private fun initialize() {
         zkConnection = ZkConnection()
-        val zk = zkConnection!!.connect("host.docker.internal"/*"localhost"*/)
+        val zk = zkConnection.connect("host.docker.internal"/*"localhost"*/)
         this.zk = ZookeeperKtClient(zk)
+    }
+
+    private fun initMembers(shard: Shard) {
+        runBlocking {
+            queryMembershipJob = launch {
+                membership = Membership.make(zk, shard.toString())
+
+                chan = Channel()
+                membership.onChange = {
+                    chan.send(membership.queryMembers())
+                }
+            }
+        }
     }
 
     init {
         initialize()
+        initMembers(Shard.SHARD1)
+        //join()
         /*val chan = Channel<Unit>()
         val zk = ZooKeeper("localhost:9000", 1000) { event ->
             if (event.state == Watcher.Event.KeeperState.SyncConnected &&
@@ -105,5 +120,31 @@ object ZkRepository {
             }.first.let { ZKPaths.extractSequentialSuffix(it)!! }
         }
         return seqNum.toLong()
+    }
+
+    fun join() {
+        /*runBlocking {
+            launch { membership.join(getIp()) }
+            launch { queryMembers() }
+        }*/
+        CoroutineScope(Dispatchers.IO).launch {
+            runCatching{
+                membership.join(ShardsRepository.getShardIpName())
+                queryMembers()
+            }
+        }
+    }
+
+    fun queryMembers() {
+        runBlocking {
+            val job = launch {
+                for (members in chan) {
+                    ShardsRepository.setIps(members)
+                    println("Members: ${members.joinToString(", ")}")
+                }
+            }
+            chan.send(membership.queryMembers())
+            job.join()
+        }
     }
 }

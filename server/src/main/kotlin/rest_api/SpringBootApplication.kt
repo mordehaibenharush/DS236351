@@ -5,11 +5,24 @@ import org.springframework.boot.runApplication
 import kotlinx.coroutines.*
 import grpc_service.TxServer
 import kotlinx.coroutines.CoroutineScope
+import zk_service.ZkRepository
 
 @SpringBootApplication
 class Main
 
 fun main(args: Array<String>) {
+	CoroutineScope(Dispatchers.IO).launch {
+		runCatching{
+			val zk = ZkRepository
+			launch { zk.join() }
+		}
+	}
+	CoroutineScope(Dispatchers.IO).launch {
+		runCatching{
+			val zk = ZkRepository
+			launch { zk.queryMembers() }
+		}
+	}
 	CoroutineScope(Dispatchers.IO).launch {
 		runCatching{
 			TxServer.main(args)
