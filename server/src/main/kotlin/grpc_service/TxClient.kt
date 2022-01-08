@@ -113,6 +113,10 @@ object TxClient {
         return com.example.api.repository.model.Transaction(tx.txId.id, inputs, outputs)
     }
 
+    private fun toClientTransactionList(txList: List<com.example.api.repository.model.Transaction>) : TransactionList {
+        return TransactionList.newBuilder().addAllTxList(txList.map { toClientTransaction(it) }).build()
+    }
+
     private fun insertTx(tx: com.example.api.repository.model.Transaction) {
         try {
             connectStub(tx.inputs[0].address)
@@ -215,6 +219,17 @@ object TxClient {
         try {
             connectStub(tx.inputs[0].address)
             stub.insertTx(toClientTransaction(tx))
+        } catch (e: Throwable) {
+            println("### $e ###")
+        } finally {
+            disconnectStub()
+        }
+    }
+
+    fun submitTransactionList(txList: List<com.example.api.repository.model.Transaction>) {
+        try {
+            connectStub(txList[0].inputs[0].address)
+            stub.insertTxList(toClientTransactionList(txList))
         } catch (e: Throwable) {
             println("### $e ###")
         } finally {

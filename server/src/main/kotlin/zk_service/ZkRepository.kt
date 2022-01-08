@@ -11,10 +11,24 @@ import java.net.InetAddress
 typealias TimeStamp = Long
 //typealias GetTimestamp = suspend CoroutineScope.(Array<String>, client: ZooKeeperKt) -> TimeStamp
 
-fun zkmain(args: Array<String>) {
+fun main(args: Array<String>) {
     val zkr = ZkRepository
-    zkr.join()
-    println("### DONE ###")
+    runBlocking {
+        launch {
+            zkr.lock()
+            println(args[0])
+            delay(20000)
+            zkr.unlock()
+            println("${args[0]} unlocked")
+        }
+        /*launch {
+            zkr.lock()
+            println("22222222")
+            delay(10000)
+            zkr.unlock()
+            println("222 unlocked")
+        }*/
+    }
 }
 
 object ZkRepository {
@@ -23,6 +37,7 @@ object ZkRepository {
     lateinit var membership: Membership
     lateinit var queryMembershipJob: Job
     lateinit var chan: Channel<ZChildren>
+    lateinit var mutex: ZKMutex
     //private val shardsPath : Array<String> = arrayOf("1",)
     private val globalClockPath : String = "/clock/"
     private val leadersIpPath : String = "/leaders/"
@@ -97,9 +112,16 @@ object ZkRepository {
         }
     }
 
+    private fun initMutex() {
+        runBlocking {
+            mutex = ZKMutex.make(zk, "lock")
+        }
+    }
+
     init {
         initialize()
         initMembers(Shard.SHARD1)
+        initMutex()
         //join()
         /*val chan = Channel<Unit>()
         val zk = ZooKeeper("localhost:9000", 1000) { event ->
@@ -146,5 +168,19 @@ object ZkRepository {
             chan.send(membership.queryMembers())
             job.join()
         }
+    }
+
+    fun lock() {
+        runBlocking {
+            try {
+                mutex.lock()
+            } catch (e: IllegalStateException) {
+                println(e)
+            }
+        }
+    }
+
+    fun unlock() {
+        runBlocking { mutex.unlock() }
     }
 }

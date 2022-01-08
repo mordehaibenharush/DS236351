@@ -17,6 +17,7 @@ service TxService {
   rpc RemoveUtxo (TrRequest) returns (google.protobuf.Empty) {}
   rpc RedeemTr (TrRequest) returns (UtxoList) {}
   rpc GetAllUtxo (Request) returns (UtxoList) {}
+  rpc insertTxList (TransactionList) returns (google.protobuf.Empty) {}
   rpc GetLedger (Limit) returns (LedgerTxEntryList) {}
 }
 

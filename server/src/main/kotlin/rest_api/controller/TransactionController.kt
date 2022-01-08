@@ -33,6 +33,10 @@ class TransactionController(private val transactionService: TransactionService) 
     fun submitTransaction(@RequestBody payload: Transaction): Unit =
         TxClient.submitTransaction(payload)
 
+    @PostMapping("/transactions")
+    fun submitTransactionList(@RequestBody payload: List<Transaction>): Unit =
+        TxClient.submitTransactionList(payload)
+
     @GetMapping("/utxo/{address}")
     fun getAllUtxos(@PathVariable("address") address: Address): ArrayList<UTxO>? =
         TxClient.getAllUnspentTxOutput(address)

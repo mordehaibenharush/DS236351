@@ -4,16 +4,19 @@ import com.google.protobuf.Empty
 import cs236351.txservice.*
 import io.grpc.stub.StreamObserver
 import cs236351.txservice.TxServiceGrpc.TxServiceImplBase
+import zk_service.ZkRepository
 
 class GrpcServiceImpl : TxServiceImplBase() {
     private val transactionRepository: TransactionRepository = TransactionRepository()
 
     override fun insertTx(request: Transaction, responseObserver: StreamObserver<Empty>) {
+        ZkRepository.lock()
         transactionRepository.insertTx(request)
         for (tr in request.outputsList) {
             TxClient.sendTr(request.txId.id, request.inputsList[0].address, tr)
             /*transactionRepository.removeUtxoByValue(request.inputsList[0].address, tr.amount)*/
         }
+        ZkRepository.unlock()
         responseObserver.onNext(Empty.newBuilder().build())
         responseObserver.onCompleted()
     }
@@ -56,6 +59,25 @@ class GrpcServiceImpl : TxServiceImplBase() {
         utxoListBuilder.addAllUtxoList(transactionRepository.getUtxos(request.address))
         val response: UtxoList = utxoListBuilder.build()
         responseObserver.onNext(response)
+        responseObserver.onCompleted()
+    }
+
+    override fun insertTxList(request: TransactionList, responseObserver: StreamObserver<Empty>) {
+        val totalBalance = transactionRepository.getTotalUtxosValue(request.txListList[0].inputsList[0].address)
+        val totalInputsValue = request.txListList.fold(0.toLong())
+            {total1, Tx -> total1 + (Tx.inputsList.fold(0.toLong()) {total2, utxo -> total2 + utxo.value}) }
+        if (totalInputsValue < totalBalance) {
+            ZkRepository.lock()
+            for (tx in request.txListList) {
+                transactionRepository.insertTx(tx)
+                for (tr in tx.outputsList) {
+                    TxClient.sendTr(tx.txId.id, tx.inputsList[0].address, tr)
+                    /*transactionRepository.removeUtxoByValue(request.inputsList[0].address, tr.amount)*/
+                }
+            }
+            ZkRepository.unlock()
+        }
+        responseObserver.onNext(Empty.newBuilder().build())
         responseObserver.onCompleted()
     }
 

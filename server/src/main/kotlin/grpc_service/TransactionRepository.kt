@@ -73,6 +73,11 @@ class TransactionRepository {
         return ArrayList(utxoMap[address]!!.values)
     }
 
+    fun getTotalUtxosValue(address: Address) : Long {
+        val utxos = getUtxos(address)
+        return utxos.fold(0.toLong()) {total, utxo -> total + utxo.value}
+    }
+
     fun removeUtxoByValue(address : Address, amount : Value) : Boolean {
         var totalAmount : Value = 0
         val utxoKeysToRemove : ArrayList<Id> = ArrayList<Id>()
