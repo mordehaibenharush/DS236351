@@ -1,11 +1,10 @@
 package zk_service
 
+import grpc_service.Address
 import grpc_service.Shard
 import grpc_service.ShardsRepository
-import grpc_service.TxServer
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
-import org.springframework.web.servlet.function.ServerResponse
 import java.net.InetAddress
 
 typealias TimeStamp = Long
@@ -14,13 +13,11 @@ typealias TimeStamp = Long
 fun main(args: Array<String>) {
     val zkr = ZkRepository
     runBlocking {
-        launch {
-            zkr.lock()
+            zkr.txLock()
             println(args[0])
             delay(20000)
-            zkr.unlock()
+            zkr.txUnlock()
             println("${args[0]} unlocked")
-        }
         /*launch {
             zkr.lock()
             println("22222222")
@@ -37,7 +34,8 @@ object ZkRepository {
     lateinit var membership: Membership
     lateinit var queryMembershipJob: Job
     lateinit var chan: Channel<ZChildren>
-    lateinit var mutex: ZKMutex
+    lateinit var txMutex: ZKMutex
+    //var utxoMutexMap = hashMapOf<Address, ZKMutex>()
     //private val shardsPath : Array<String> = arrayOf("1",)
     private val globalClockPath : String = "/clock/"
     private val leadersIpPath : String = "/leaders/"
@@ -114,7 +112,7 @@ object ZkRepository {
 
     private fun initMutex() {
         runBlocking {
-            mutex = ZKMutex.make(zk, "lock")
+            txMutex = ZKMutex.make(zk, "tx-lock")
         }
     }
 
@@ -139,7 +137,7 @@ object ZkRepository {
         val seqNum = runBlocking {
             zk.create(globalClockPath + "ts-") {
                 flags = Ephemeral and Sequential
-            }.first.let { ZKPaths.extractSequentialSuffix(it)!! }
+            }.first.let { ZKPaths.extractSequentialSuffix(it) }
         }
         return seqNum.toLong()
     }
@@ -170,17 +168,33 @@ object ZkRepository {
         }
     }
 
-    fun lock() {
+    fun txLock() {
         runBlocking {
             try {
-                mutex.lock()
+                txMutex.lock()
             } catch (e: IllegalStateException) {
                 println(e)
             }
         }
     }
 
-    fun unlock() {
-        runBlocking { mutex.unlock() }
+    fun txUnlock() {
+        runBlocking { txMutex.unlock() }
+    }
+
+    fun utxoLock(address: Address) : ZKMutex {
+        return runBlocking {
+            val utxoMutex = ZKMutex.make(zk, address)
+            try {
+                utxoMutex.lock()
+            } catch (e: IllegalStateException) {
+                println(e)
+            }
+            return@runBlocking utxoMutex
+        }
+    }
+
+    fun utxoUnlock(utxoMutex: ZKMutex) {
+        runBlocking { utxoMutex.unlock() }
     }
 }

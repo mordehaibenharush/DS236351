@@ -21,8 +21,10 @@ class TransactionRepository {
     }
 
     fun insertTx(tx: Transaction) {
+        ZkRepository.txLock()
         txMap[tx.txId.id] = tx
         txLedger.add(TxClient.ledgerTxEntry(zk.getTimestamp(), tx))
+        ZkRepository.txUnlock()
     }
 
     fun deleteTx(txId: TxId) {
@@ -54,13 +56,19 @@ class TransactionRepository {
         return utxoMap[address]!!.contains(txId)
     }
 
-    fun insertUtxo(txId: Id, address: Address, value: Value) {
+    private fun addUtxo(txId: Id, address: Address, value: Value) {
         var existingValue = 0.toLong()
         if (utxoMap[address] == null)
             utxoMap[address] = HashMap()
         if (existsUtxo(address, txId))
             existingValue = utxoMap[address]!![txId]!!.value
         utxoMap[address]!![txId] = TxClient.utxo(txId, address, existingValue+value)
+    }
+
+    fun insertUtxo(txId: Id, address: Address, value: Value) {
+        val mutex = zk.utxoLock(address)
+        addUtxo(txId, address, value)
+        zk.utxoUnlock(mutex)
     }
 
     fun deleteUtxo(address : Address, utxo: Utxo) {
@@ -80,11 +88,12 @@ class TransactionRepository {
 
     fun removeUtxoByValue(address : Address, amount : Value) : Boolean {
         var totalAmount : Value = 0
-        val utxoKeysToRemove : ArrayList<Id> = ArrayList<Id>()
-
+        val utxoKeysToRemove : ArrayList<Id> = ArrayList()
+        val mutex = zk.utxoLock(address)
         val utxos = utxoMap[address]?.filterValues { it.value == amount }?.toList()
         if (utxos != null && utxos.isNotEmpty()) {
                 utxoMap[address]?.remove(utxos[0].first)
+                zk.utxoUnlock(mutex)
                 return true
             }
         else {
@@ -102,10 +111,12 @@ class TransactionRepository {
                 utxoMap[address]?.remove(utxoKey)
             }
             if (totalAmount > amount) {
-                insertUtxo(-1, address, totalAmount - amount)
+                addUtxo(-1, address, totalAmount - amount)
             }
+            zk.utxoUnlock(mutex)
             return true
         }
+        zk.utxoUnlock(mutex)
         return false
     }
 }
