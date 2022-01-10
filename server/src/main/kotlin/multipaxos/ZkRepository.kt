@@ -1,8 +1,8 @@
-package zk_service
+package multipaxos
+
+import zk_service.*
 
 import grpc_service.Address
-import grpc_service.Shard
-import grpc_service.ShardsRepository
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import java.net.InetAddress
@@ -13,11 +13,11 @@ typealias TimeStamp = Long
 fun main(args: Array<String>) {
     val zkr = ZkRepository
     runBlocking {
-            zkr.txLock()
-            println(args[0])
-            delay(20000)
-            zkr.txUnlock()
-            println("${args[0]} unlocked")
+        zkr.txLock()
+        println(args[0])
+        delay(20000)
+        zkr.txUnlock()
+        println("${args[0]} unlocked")
         /*launch {
             zkr.lock()
             println("22222222")
@@ -35,8 +35,7 @@ object ZkRepository {
     lateinit var queryMembershipJob: Job
     lateinit var chan: Channel<ZChildren>
     lateinit var txMutex: ZKMutex
-    //var utxoMutexMap = hashMapOf<Address, ZKMutex>()
-    //private val shardsPath : Array<String> = arrayOf("1",)
+
     private val globalClockPath : String = "/clock/"
     private val leadersIpPath : String = "/leaders/"
 
@@ -108,6 +107,10 @@ object ZkRepository {
                 }
             }
         }
+    }
+
+    fun setWatcher(watcher: suspend () -> Unit) {
+        membership.onChange = watcher
     }
 
     private fun initMutex() {
