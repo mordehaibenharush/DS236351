@@ -13,17 +13,19 @@ import io.grpc.ServerBuilder
 import io.grpc.stub.AbstractBlockingStub
 import io.grpc.stub.StreamObserver
 import kotlinx.coroutines.*
-import multipaxos.ShardsRepository.getIpFromId
-import multipaxos.ShardsRepository.getShardIds
-import multipaxos.ShardsRepository.getShardIps
-import multipaxos.ShardsRepository.getShardLeaderIp
-import multipaxos.ZkRepository.getIp
+import grpc_service.ShardsRepository.getIpFromId
+import grpc_service.ShardsRepository.getShardIds
+import grpc_service.ShardsRepository.getShardIps
+import grpc_service.ShardsRepository.getShardLeaderIp
+import grpc_service.ShardsRepository.getIp
+import grpc_service.ShardsRepository.getShardLeaderId
+import grpc_service.ShardsRepository.getShardLeaderIpFromId
 import java.util.*
 
 fun main(args: Array<String>) {
     runBlocking {
         val id = args[0].toInt()
-        val service = BroadcastServiceImpl()
+        val service = BroadcastServiceImpl
         launch { service.start(id) }
         /*val server: Server = ServerBuilder
         .forPort(8090 + id)
@@ -41,15 +43,16 @@ fun main(args: Array<String>) {
     }*/
 }
 
-class BroadcastServiceImpl : BroadcastServiceGrpc.BroadcastServiceImplBase() {
+object BroadcastServiceImpl : BroadcastServiceGrpc.BroadcastServiceImplBase() {
     lateinit var proposer: Proposer
     lateinit var atomicBroadcast: AtomicBroadcast<String>
+    lateinit var chans:  Map<ID, ManagedChannel>
     lateinit var stub: BroadcastServiceGrpc.BroadcastServiceBlockingStub
     var channelStack: Stack<ManagedChannel> = Stack()
+
     val omega = object : OmegaFailureDetector<ID> {
-        //val zk = ZkRepository
-        override val leader: ID get() = 1/*ShardsRepository.getShardLeaderId(zk.getIp())*/
-        override fun addWatcher(observer: suspend () -> Unit) { /*zk.setWatcher(observer)*/ }
+        override val leader: ID get() = getShardLeaderId(getIp())
+        override fun addWatcher(observer: suspend () -> Unit) { ZkRepository.setWatcher(observer) }
     }
 
     val biSerializer = object : ByteStringBiSerializer<String> {
@@ -62,14 +65,14 @@ class BroadcastServiceImpl : BroadcastServiceGrpc.BroadcastServiceImplBase() {
             // org.apache.log4j.BasicConfigurator.configure()
 
             // Take the ID as the port number
-            val id = i//getIp().split('.').last().toInt()
+            val id = getIp().split('.').last().toInt()
 
             // Init services
             val learnerService = LearnerService(this)
             val acceptorService = AcceptorService(id)
 
             // Build gRPC server
-            val server = ServerBuilder.forPort(9010+id)
+            val server = ServerBuilder.forPort(9010)
                 .apply {
                     //if (id != omega.leader) // Apply your own logic: who should be an acceptor
                         addService(acceptorService)
@@ -96,8 +99,8 @@ class BroadcastServiceImpl : BroadcastServiceGrpc.BroadcastServiceImplBase() {
             }
             println("$id - internal server started")
             // Create channels with clients
-            val chans = /*getShardIds(id)*/listOf(0,1,3).associateWith {
-                ManagedChannelBuilder.forAddress(/*getIpFromId(it)*/"localhost", 9010+it).usePlaintext().build()!!
+            chans = getShardIds(id)/*listOf(0,1,3)*/!!.associateWith {
+                ManagedChannelBuilder.forAddress(getIpFromId(it)/*"localhost"*/, 9010).usePlaintext().build()!!
             }
 
             /*
@@ -105,7 +108,7 @@ class BroadcastServiceImpl : BroadcastServiceGrpc.BroadcastServiceImplBase() {
              * The learner service is a reliable broadcast service and needs to
              * have a connection with all processes that participate as learners
              */
-            learnerService.learnerChannels = chans.filterKeys { /*getIpFromId(it) != getIp()*/ it != id }.values.toList()
+            learnerService.learnerChannels = chans.filterKeys { getIpFromId(it) != getIp() /*it != id*/ }.values.toList()
 
             // Create a proposer, not that the proposers id's id and
             // the acceptors id's must be all unique (they break symmetry)
@@ -126,8 +129,8 @@ class BroadcastServiceImpl : BroadcastServiceGrpc.BroadcastServiceImplBase() {
     }
 
     private fun connectStub()  {
-        val ip = omega.leader/*getShardLeaderIp(omega.leader)*/
-        val channel =  ManagedChannelBuilder.forAddress("localhost", 9010+ip)
+        val ip = getShardLeaderIpFromId(omega.leader)
+        val channel =  ManagedChannelBuilder.forAddress(ip, 9010)
             .usePlaintext()
             .build()
         this.stub = BroadcastServiceGrpc.newBlockingStub(channel)
@@ -144,6 +147,13 @@ class BroadcastServiceImpl : BroadcastServiceGrpc.BroadcastServiceImplBase() {
             for ((`seq#`, msg) in atomicBroadcast.stream) {
                 println("Message #$`seq#`: $msg  received!")
             }
+        }
+    }
+
+    fun send(prop: String ) {
+        CoroutineScope(Dispatchers.IO).launch {
+                println("Adding Proposal - $prop")
+                atomicBroadcast.send(prop)
         }
     }
 

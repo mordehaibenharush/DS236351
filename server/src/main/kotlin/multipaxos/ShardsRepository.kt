@@ -1,6 +1,7 @@
 package multipaxos
 
 import grpc_service.Address
+import grpc_service.ShardsRepository
 import zk_service.ZChildren
 import java.net.InetAddress
 
@@ -18,13 +19,13 @@ object ShardsRepository {
     fun getIpFromName(name: String) = name.split('-')[1]
 
     fun setIps(members: ZChildren) {
+        ShardsRepository.ips.forEach { l -> l.value.clear() }
         for (member in members) {
-            val shard = getShardFromName(member)
-            val ip = getIpFromName(member)
-            ips[shard]!!.clear()
-            ips[shard]!!.add(ip)
-            ips[shard]!!.sortBy { it }
-            println(ips[shard])
+            val shard = ShardsRepository.getShardFromName(member)
+            val ip = ShardsRepository.getIpFromName(member)
+            ShardsRepository.ips[shard]!!.add(ip)
+            ShardsRepository.ips[shard]!!.sortBy { it }
+            println(ShardsRepository.ips[shard])
         }
     }
 

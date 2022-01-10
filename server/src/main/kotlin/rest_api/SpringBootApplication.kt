@@ -5,6 +5,7 @@ import org.springframework.boot.runApplication
 import kotlinx.coroutines.*
 import grpc_service.TxServer
 import kotlinx.coroutines.CoroutineScope
+import multipaxos.BroadcastServiceImpl
 import zk_service.ZkRepository
 
 @SpringBootApplication
@@ -21,6 +22,12 @@ fun main(args: Array<String>) {
 		runCatching{
 			val zk = ZkRepository
 			launch { zk.queryMembers() }
+		}
+	}
+	CoroutineScope(Dispatchers.IO).launch {
+		runCatching{
+			val broadcast = BroadcastServiceImpl
+			launch { broadcast.start(-1) }
 		}
 	}
 	CoroutineScope(Dispatchers.IO).launch {

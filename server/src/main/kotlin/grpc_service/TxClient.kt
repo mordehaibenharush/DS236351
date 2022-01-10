@@ -6,6 +6,7 @@ import com.google.protobuf.Empty
 import cs236351.txservice.*
 import io.grpc.ManagedChannel
 import io.grpc.ManagedChannelBuilder
+import multipaxos.BroadcastServiceImpl
 import org.springframework.http.HttpStatus
 import java.net.InetAddress
 import java.util.*
@@ -119,6 +120,7 @@ object TxClient {
 
     private fun insertTx(tx: com.example.api.repository.model.Transaction) {
         try {
+            BroadcastServiceImpl.send(tx.toString())
             connectStub(tx.inputs[0].address)
             stub.insertTx(toClientTransaction(tx))
         } catch (e: Throwable) {
