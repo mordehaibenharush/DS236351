@@ -42,12 +42,14 @@ internal class MajorityQuorumWaiter<ID, Stub>(
         var okCount = 0
         while (count < nodes.size) {
             val pair = chan.receive()
+            list.add(pair)
+
             val (id, t) = pair
             if (t != null && predicate.test(Pair(id, t))) {
                 okCount++
                 if (okCount >= majoritySize) break
             }
-            list.add(pair)
+
         }
 
         scope.launch(context) {

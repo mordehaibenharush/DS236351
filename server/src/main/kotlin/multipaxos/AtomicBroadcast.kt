@@ -3,7 +3,9 @@ package multipaxos
 import com.google.protobuf.ByteString
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.ReceiveChannel
-import kotlinx.coroutines.channels.SendChannel
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import java.util.*
 
 data class TotallyOrderedMessage<T>(
     val sequenceNo: Int,
@@ -22,18 +24,57 @@ abstract class AtomicBroadcast<T>(
     public val stream: ReceiveChannel<TotallyOrderedMessage<T>>
         get() = chan
 
-    init {
-        learner.observers += { seq, serialized ->
+    private val messageBuffer = object {
+        private val buffer = PriorityQueue<Pair<Int, ByteString>>(
+            // Comparator
+            { o1, o2 -> o1!!.first - o2!!.first }
+        )
+        private var lastDelivered = 0
+
+        // Mutex is used to ensure that only one coroutine
+        // interacts with the queue at a time since the priority queue
+        // implementation that is used is not thread safe
+        private val mutex = Mutex()
+
+        suspend fun buffer(seq: Int, serialized: ByteString) = mutex.withLock {
+            buffer.offer(Pair(seq, serialized))
+        }
+
+        // Delivers all messages that have become deliverable
+        suspend fun deliverAll() = mutex.withLock {
+            while (!buffer.isEmpty()) {
+                if (!isLatestMessageDeliverable()) break
+                deliverLatestMessage()
+            }
+        }
+
+
+        // A message is deliverable if it is the *next* message
+        // after most recent message that has been delivered
+        private fun isLatestMessageDeliverable() =
+            buffer.peek()!!.first == lastDelivered + 1
+
+        private suspend fun deliverLatestMessage() {
+            val (seq, serialized) = buffer.poll()!!
+            lastDelivered = seq
+
             // Note: This ignores empty byte strings
             if (serialized.size() == 0) {
-                return@`+=`
+                return
             }
 
             for (msg in _deliver(serialized)) {
                 `sequence#`++
                 chan.send(TotallyOrderedMessage(`sequence#`, msg))
             }
+        }
+    }
 
+
+    init {
+        learner.observers += { seq, serialized ->
+            messageBuffer.buffer(seq, serialized)
+            messageBuffer.deliverAll()
         }
     }
 

@@ -15,7 +15,7 @@ val biSerializer = object : ByteStringBiSerializer<String> {
 suspend fun main(args: Array<String>) = coroutineScope {
 
     // Displays all debug messages from gRPC
-    // org.apache.log4j.BasicConfigurator.configure()
+    //org.apache.log4j.BasicConfigurator.configure()
 
     // Take the ID as the port number
     val id = args[0].toInt()
