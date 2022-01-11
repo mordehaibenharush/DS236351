@@ -14,12 +14,12 @@ dependencies {
     protobuf(project(":protos"))
 
     api(kotlin("stdlib"))
-    api("org.jetbrains.kotlinx:kotlinx-coroutines-core:${rootProject.ext["coroutinesVersion"]}")
+    api("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.0-native-mt")
 
-    api("io.grpc:grpc-protobuf:${rootProject.ext["grpcVersion"]}")
-    api("com.google.protobuf:protobuf-java-util:${rootProject.ext["protobufVersion"]}")
-    api("com.google.protobuf:protobuf-kotlin:${rootProject.ext["protobufVersion"]}")
-    api("io.grpc:grpc-kotlin-stub:${rootProject.ext["grpcKotlinVersion"]}")
+    api("io.grpc:grpc-protobuf:1.42.1")
+    api("com.google.protobuf:protobuf-java-util:3.19.1")
+    api("com.google.protobuf:protobuf-kotlin:3.19.1")
+    api("io.grpc:grpc-kotlin-stub:1.2.0")
 }
 
 java {
