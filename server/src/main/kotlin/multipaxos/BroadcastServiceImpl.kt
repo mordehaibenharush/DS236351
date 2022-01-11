@@ -156,16 +156,17 @@ object BroadcastServiceImpl : BroadcastServiceGrpc.BroadcastServiceImplBase() {
     private fun CoroutineScope.startRecievingMessages(atomicBroadcast: AtomicBroadcast<String>) {
         launch {
             for ((`seq#`, msg) in atomicBroadcast.stream) {
-                println("Message #$`seq#`: $msg  received!")
+                println("Message #$`seq#`: ${msgType.values()[msg.split('|')[0].toInt()]}  received!")
                 msgDispatch(msg)
             }
         }
     }
 
-    fun send(prop: String ) {
+    fun send(type: msgType, prop: String) {
+        val msg = type.ordinal.toString() + "|" + prop
         CoroutineScope(Dispatchers.IO).launch {
-                println("Adding Proposal - $prop")
-                atomicBroadcast.send(prop)
+                println("Adding Proposal - $type")
+                atomicBroadcast.send(msg)
         }
     }
 
@@ -200,8 +201,8 @@ object BroadcastServiceImpl : BroadcastServiceGrpc.BroadcastServiceImplBase() {
     }
 
     fun msgDispatch(msg: String) {
-        val type = msgType.values()[msg.split('-').first().toInt()]
-        val body = msg.split('-').last()
+        val type = msgType.values()[msg.split('|').first().toInt()]
+        val body = msg.split('|').last()
         when(type) {
             msgType.INSERT_TRANSACTION -> {
                 TransactionRepository.insertTx(msgToTransaction(body))
