@@ -47,7 +47,7 @@ object ShardsRepository {
     }
 
     fun getShardLeaderIp(address: Address) : Address {
-        //val shard = Shard.values()[address.split('.').last().toInt().mod(Shard.values().size)]
+        val shard = Shard.values()[address.split('.').last().toInt().mod(Shard.values().size)]
         return ips[shard]!![0]
     }
 
