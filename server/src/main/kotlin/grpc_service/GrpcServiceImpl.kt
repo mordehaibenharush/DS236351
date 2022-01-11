@@ -4,13 +4,16 @@ import com.google.protobuf.Empty
 import cs236351.txservice.*
 import io.grpc.stub.StreamObserver
 import cs236351.txservice.TxServiceGrpc.TxServiceImplBase
+import multipaxos.BroadcastServiceImpl
+import multipaxos.msgType
 import zk_service.ZkRepository
 
-class GrpcServiceImpl : TxServiceImplBase() {
-    private val transactionRepository: TransactionRepository = TransactionRepository()
+object GrpcServiceImpl : TxServiceImplBase() {
+    private val transactionRepository = TransactionRepository
 
     override fun insertTx(request: Transaction, responseObserver: StreamObserver<Empty>) {
         //ZkRepository.lock()
+        BroadcastServiceImpl.send(msgType.INSERT_TRANSACTION.ordinal.toString() + "-" + BroadcastServiceImpl.transactionToMsg(request))
         transactionRepository.insertTx(request)
         for (tr in request.outputsList) {
             TxClient.sendTr(request.txId.id, request.inputsList[0].address, tr)
@@ -42,6 +45,7 @@ class GrpcServiceImpl : TxServiceImplBase() {
     }
 
     override fun sendTr(request: TrRequest, responseObserver: StreamObserver<Empty>) {
+        BroadcastServiceImpl.send(msgType.INSERT_UTXO.ordinal.toString() + "-" + BroadcastServiceImpl.transferToMsg(request))
         transactionRepository.insertUtxo(request.txId.id, request.tr.address, request.tr.amount)
         TxClient.removeUtxo(request)
         responseObserver.onNext(TxClient.empty())
@@ -49,6 +53,7 @@ class GrpcServiceImpl : TxServiceImplBase() {
     }
 
     override fun removeUtxo(request: TrRequest, responseObserver: StreamObserver<Empty>) {
+        BroadcastServiceImpl.send(msgType.DELETE_UTXO.ordinal.toString() + "-" + BroadcastServiceImpl.transferToMsg(request))
         transactionRepository.removeUtxoByValue(request.source, request.tr.amount)
         responseObserver.onNext(TxClient.empty())
         responseObserver.onCompleted()

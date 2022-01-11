@@ -1,5 +1,6 @@
 package com.example.api
 
+import grpc_service.ShardsRepository.getIp
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 import kotlinx.coroutines.*
@@ -30,6 +31,12 @@ fun main(args: Array<String>) {
 			launch { broadcast.start(-1) }
 		}
 	}
+	/*runBlocking {
+		delay(10000)
+		val ip = getIp()
+		for (i in 0..9)
+			BroadcastServiceImpl.send("*** $ip - $i ***")
+	}*/
 	CoroutineScope(Dispatchers.IO).launch {
 		runCatching{
 			TxServer.main(args)

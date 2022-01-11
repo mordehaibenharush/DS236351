@@ -57,6 +57,4 @@ object ShardsRepository {
         val shard = Shard.values()[id.mod(Shard.values().size)]
         return ips[shard]?.map { getId(it) }
     }
-
-
 }

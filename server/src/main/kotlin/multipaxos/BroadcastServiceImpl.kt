@@ -1,43 +1,54 @@
 package multipaxos
 
+import com.example.api.repository.model.Transfer
+import com.example.api.repository.model.UTxO
+import com.google.gson.Gson
 import com.google.protobuf.ByteString
 import com.google.protobuf.Empty
 import com.google.protobuf.kotlin.toByteStringUtf8
 import cs236351.broadcast.BroadcastServiceGrpc
 import cs236351.broadcast.Msg
 import cs236351.broadcast.Transaction
+import cs236351.txservice.TrRequest
 import io.grpc.ManagedChannel
 import io.grpc.ManagedChannelBuilder
-import io.grpc.Server
 import io.grpc.ServerBuilder
-import io.grpc.stub.AbstractBlockingStub
 import io.grpc.stub.StreamObserver
 import kotlinx.coroutines.*
 import grpc_service.ShardsRepository.getIpFromId
 import grpc_service.ShardsRepository.getShardIds
-import grpc_service.ShardsRepository.getShardIps
-import grpc_service.ShardsRepository.getShardLeaderIp
 import grpc_service.ShardsRepository.getIp
 import grpc_service.ShardsRepository.getShardLeaderId
 import grpc_service.ShardsRepository.getShardLeaderIpFromId
+import grpc_service.TransactionRepository
+import grpc_service.TxClient
 import java.util.*
 
+enum class msgType {INSERT_TRANSACTION, INSERT_UTXO, DELETE_UTXO}
+
 fun main(args: Array<String>) {
-    runBlocking {
+    val tx = com.example.api.repository.model.Transaction(1,
+        listOf(UTxO(1,"0.0.0.0",5), UTxO(2,"0.0.0.1",6)),
+        listOf(Transfer("0.0.0.0", "0.0.0.1", 3)))
+    //val str = BroadcastServiceImpl.transactionToMsg(tx)
+    //println(str)
+    //val tt = BroadcastServiceImpl.msgToTransaction(str)
+
+    /*runBlocking {
         val id = args[0].toInt()
         val service = BroadcastServiceImpl
         launch { service.start(id) }
-        /*val server: Server = ServerBuilder
+        *//*val server: Server = ServerBuilder
         .forPort(8090 + id)
         .addService(service).build()
-    server.start()*/
+    server.start()*//*
         println("$id - started server")
         withContext(Dispatchers.IO) { // Operations that block the current thread should be in a IO context
             System.`in`.read()
         }
         println("$id - start sending messages")
         service.startGeneratingMessages(id)
-    }
+    }*/
     /*withContext(Dispatchers.IO) { // Operations that block the current thread should be in a IO context
         server.awaitTermination()
     }*/
@@ -146,6 +157,7 @@ object BroadcastServiceImpl : BroadcastServiceGrpc.BroadcastServiceImplBase() {
         launch {
             for ((`seq#`, msg) in atomicBroadcast.stream) {
                 println("Message #$`seq#`: $msg  received!")
+                msgDispatch(msg)
             }
         }
     }
@@ -167,6 +179,40 @@ object BroadcastServiceImpl : BroadcastServiceGrpc.BroadcastServiceImplBase() {
                 val prop = "[Value no $it from $id]"
                     .also { println("Adding Proposal $it") }
                 atomicBroadcast.send(prop)
+            }
+        }
+    }
+
+    fun transactionToMsg(tx: cs236351.txservice.Transaction) : String {
+        return Gson().toJson(tx)
+    }
+
+    fun msgToTransaction(msg: String) : cs236351.txservice.Transaction {
+        return Gson().fromJson(msg, cs236351.txservice.Transaction::class.java)
+    }
+
+    fun transferToMsg(tr: TrRequest) : String {
+        return Gson().toJson(tr)
+    }
+
+    fun msgToTransfer(msg: String) : TrRequest {
+        return Gson().fromJson(msg, TrRequest::class.java)
+    }
+
+    fun msgDispatch(msg: String) {
+        val type = msgType.values()[msg.split('-').first().toInt()]
+        val body = msg.split('-').last()
+        when(type) {
+            msgType.INSERT_TRANSACTION -> {
+                TransactionRepository.insertTx(msgToTransaction(body))
+            }
+            msgType.INSERT_UTXO -> {
+                val trRequest = msgToTransfer(body)
+                TransactionRepository.insertUtxo(trRequest.txId.id, trRequest.tr.address, trRequest.tr.amount)
+            }
+            msgType.DELETE_UTXO -> {
+                val trRequest = msgToTransfer(body)
+                TransactionRepository.removeUtxoByValue(trRequest.source, trRequest.tr.amount)
             }
         }
     }

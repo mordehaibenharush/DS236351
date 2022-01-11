@@ -11,7 +11,7 @@ object TxServer {
     fun main(args: Array<String>) {
         val server: Server = ServerBuilder
             .forPort(8090)
-            .addService(GrpcServiceImpl()).build()
+            .addService(GrpcServiceImpl).build()
         server.start()
         server.awaitTermination()
     }

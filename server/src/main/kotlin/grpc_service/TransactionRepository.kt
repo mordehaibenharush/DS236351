@@ -10,7 +10,7 @@ typealias Address = String
 typealias Value = Long
 typealias TimeStamp = Long
 
-class TransactionRepository {
+object TransactionRepository {
     private var zk: ZkRepository = ZkRepository
     var txMap: HashMap<Id, Transaction> = HashMap()
     var utxoMap: HashMap<Address, HashMap<Id, Utxo>> = HashMap()
@@ -21,10 +21,10 @@ class TransactionRepository {
     }
 
     fun insertTx(tx: Transaction) {
-        ZkRepository.txLock()
+        //ZkRepository.txLock()
         txMap[tx.txId.id] = tx
         txLedger.add(TxClient.ledgerTxEntry(zk.getTimestamp(), tx))
-        ZkRepository.txUnlock()
+        //ZkRepository.txUnlock()
     }
 
     fun deleteTx(txId: TxId) {
@@ -66,9 +66,9 @@ class TransactionRepository {
     }
 
     fun insertUtxo(txId: Id, address: Address, value: Value) {
-        val mutex = zk.utxoLock(address)
+        //val mutex = zk.utxoLock(address)
         addUtxo(txId, address, value)
-        zk.utxoUnlock(mutex)
+        //zk.utxoUnlock(mutex)
     }
 
     fun deleteUtxo(address : Address, utxo: Utxo) {
@@ -89,11 +89,11 @@ class TransactionRepository {
     fun removeUtxoByValue(address : Address, amount : Value) : Boolean {
         var totalAmount : Value = 0
         val utxoKeysToRemove : ArrayList<Id> = ArrayList()
-        val mutex = zk.utxoLock(address)
+        //val mutex = zk.utxoLock(address)
         val utxos = utxoMap[address]?.filterValues { it.value == amount }?.toList()
         if (utxos != null && utxos.isNotEmpty()) {
                 utxoMap[address]?.remove(utxos[0].first)
-                zk.utxoUnlock(mutex)
+                //zk.utxoUnlock(mutex)
                 return true
             }
         else {
@@ -113,10 +113,10 @@ class TransactionRepository {
             if (totalAmount > amount) {
                 addUtxo(-1, address, totalAmount - amount)
             }
-            zk.utxoUnlock(mutex)
+            //zk.utxoUnlock(mutex)
             return true
         }
-        zk.utxoUnlock(mutex)
+        //zk.utxoUnlock(mutex)
         return false
     }
 }
