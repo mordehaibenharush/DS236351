@@ -40,13 +40,15 @@ object TransactionRepository {
     }
 
     fun getTxList(address: Address) : ArrayList<Transaction> {
+        txLedger.sortBy { it.timestamp }
         return ArrayList((txLedger.filter { it.tx.inputsList[0].address == address }.map { it.tx }))
     }
 
     fun getLedger(limit : Limit?) : ArrayList<LedgerTxEntry> {
-        var ledger =  txLedger
+        txLedger.sortBy { it.timestamp }
+        var ledger = txLedger
         if (limit != null)
-            ledger = ledger.takeLast(limit.limit.toInt()) as ArrayList<LedgerTxEntry>
+            ledger = ArrayList(ledger.takeLast(limit.limit.toInt()))
         return ledger
     }
 

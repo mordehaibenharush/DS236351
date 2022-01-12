@@ -21,13 +21,21 @@ import org.springframework.web.bind.annotation.RequestBody
 @RestController
 class TransactionController(private val transactionService: TransactionService) {
 
-    @GetMapping("/transaction")
-    fun getTransactionLedger(): ArrayList<Transaction>? =
-        TxClient.getTransactionLedger()
+    @GetMapping("/ledger")
+    fun getTransactionLedger(): List<Transaction>? =
+        TxClient.getTransactionLedger(null)
+
+    @GetMapping("/ledger/{limit}")
+    fun getLimitedTransactionLedger(@PathVariable("limit") limit: Int): List<Transaction>? =
+        TxClient.getTransactionLedger(limit)
 
     @GetMapping("/transaction/{address}")
-    fun getAllTransactions(@PathVariable("address") address: Address): ArrayList<Transaction>? =
-        TxClient.getAllTransactions(address)
+    fun getAllTransactions(@PathVariable("address") address: Address): List<Transaction>? =
+        TxClient.getAllTransactions(address, null)
+
+    @GetMapping("/transaction/{address}/{limit}")
+    fun getLimitedAllTransactions(@PathVariable("address") address: Address, @PathVariable("limit") limit: Int): List<Transaction>? =
+        TxClient.getAllTransactions(address, limit)
 
     @PostMapping("/transaction")
     fun submitTransaction(@RequestBody payload: Transaction): Unit =
@@ -38,7 +46,7 @@ class TransactionController(private val transactionService: TransactionService) 
         TxClient.submitTransactionList(payload)
 
     @GetMapping("/utxo/{address}")
-    fun getAllUtxos(@PathVariable("address") address: Address): ArrayList<UTxO>? =
+    fun getAllUtxos(@PathVariable("address") address: Address): List<UTxO>? =
         TxClient.getAllUnspentTxOutput(address)
 
     @PostMapping("/transfer")

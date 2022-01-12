@@ -180,7 +180,7 @@ object TxClient {
         }
     }
 
-    private fun getAllUtxo(address: Address) : ArrayList<UTxO> {
+    private fun getAllUtxo(address: Address) : List<UTxO> {
         var utxoList : ArrayList<UTxO> = ArrayList()
         try {
             connectStub(address)
@@ -193,7 +193,7 @@ object TxClient {
         return utxoList
     }
 
-    private fun getAllTx(address: Address): ArrayList<com.example.api.repository.model.Transaction> {
+    private fun getAllTx(address: Address, limit: Int?): List<com.example.api.repository.model.Transaction> {
         var txList : ArrayList<com.example.api.repository.model.Transaction> = ArrayList()
         try {
             connectStub(address)
@@ -203,13 +203,18 @@ object TxClient {
         } finally {
             disconnectStub()
         }
+        txList.sortBy { it.id }
+        if (limit != null && limit >= 0) {
+            return txList.takeLast(limit)
+        }
         return txList
     }
 
-    private fun getLedger() : ArrayList<com.example.api.repository.model.Transaction> {
+    private fun getLedger(limit: Int?) : List<com.example.api.repository.model.Transaction> {
         val ledger = ArrayList<LedgerTxEntry>()
         try {
             for (ips in shardRepository.ips.values) {
+                println(ips[0])
                 connectStub(ips[0])
                 ledger += ArrayList(stub.getLedger(null).txListList)
                 disconnectStub()
@@ -219,19 +224,27 @@ object TxClient {
         } finally {
             disconnectStub()
         }
+        /*println("###################")
+        for (i in ledger) {
+            println(i.tx.txId.id)
+        }*/
         ledger.sortBy { it.timestamp }
-        return ledger.map { fromClientTransaction(it.tx) } as ArrayList<com.example.api.repository.model.Transaction>
+        val res = ledger.map { fromClientTransaction(it.tx) }
+        if (limit != null && limit >= 0) {
+            return res.takeLast(limit)
+        }
+        return res
     }
 
     /** ###################################### API FUNCTIONS ###################################### **/
 
-    fun getAllUnspentTxOutput(address: Address): ArrayList<UTxO> = this.getAllUtxo(address)
+    fun getAllUnspentTxOutput(address: Address): List<UTxO> = this.getAllUtxo(address)
 
-    fun getAllTransactions(address: Address): ArrayList<com.example.api.repository.model.Transaction> = this.getAllTx(address)
+    fun getAllTransactions(address: Address, limit: Int?): List<com.example.api.repository.model.Transaction> = this.getAllTx(address, limit)
 
     fun getTransactionById(id: Long): com.example.api.repository.model.Transaction = this.getTx(id)
 
-    fun getTransactionLedger(): ArrayList<com.example.api.repository.model.Transaction> = this.getLedger()
+    fun getTransactionLedger(limit: Int?): List<com.example.api.repository.model.Transaction> = this.getLedger(limit)
 
     fun submitTransaction(tx: com.example.api.repository.model.Transaction) = this.insertTx(tx)
         /*try {
