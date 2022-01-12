@@ -4,9 +4,9 @@ networks:
   txmnet:
 
 services:
-  cluster1:
+  node1:
     image: dstxmanager
-    hostname: cluster1.clusters.local
+    hostname: node1.nodes.local
     ports:
       - 8081:8080
     networks:
@@ -14,11 +14,51 @@ services:
     environment:
       - SHARD=0
 
-  cluster2:
+  node2:
     image: dstxmanager
-    hostname: cluster2.clusters.local
+    hostname: node2.nodes.local
     ports:
       - 8082:8080
+    networks:
+      - txmnet
+    environment:
+      - SHARD=0
+
+  node3:
+    image: dstxmanager
+    hostname: node3.nodes.local
+    ports:
+      - 8083:8080
+    networks:
+      - txmnet
+    environment:
+      - SHARD=0
+
+  node4:
+    image: dstxmanager
+    hostname: node4.nodes.local
+    ports:
+      - 8084:8080
+    networks:
+      - txmnet
+    environment:
+      - SHARD=1
+
+  node5:
+    image: dstxmanager
+    hostname: node5.nodes.local
+    ports:
+      - 8085:8080
+    networks:
+      - txmnet
+    environment:
+      - SHARD=1
+
+  node6:
+    image: dstxmanager
+    hostname: node6.nodes.local
+    ports:
+      - 8086:8080
     networks:
       - txmnet
     environment:

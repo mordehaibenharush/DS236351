@@ -213,7 +213,7 @@ object BroadcastServiceImpl : BroadcastServiceGrpc.BroadcastServiceImplBase() {
             }
             msgType.DELETE_UTXO -> {
                 val trRequest = msgToTransfer(body)
-                TransactionRepository.removeUtxoByValue(trRequest.source, trRequest.tr.amount)
+                TransactionRepository.removeUtxoByValue(trRequest.txId.id, trRequest.source, trRequest.tr.amount)
             }
         }
     }

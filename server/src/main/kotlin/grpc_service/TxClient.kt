@@ -7,6 +7,7 @@ import cs236351.txservice.*
 import io.grpc.ManagedChannel
 import io.grpc.ManagedChannelBuilder
 import multipaxos.BroadcastServiceImpl
+import multipaxos.ZkRepository
 import org.springframework.http.HttpStatus
 import java.net.InetAddress
 import java.util.*
@@ -121,6 +122,7 @@ object TxClient {
 
     fun insertTx(tx: com.example.api.repository.model.Transaction) {
         try {
+            tx.id = ZkRepository.getTimestamp()
             connectStub(tx.inputs[0].address)
             stub.insertTx(toClientTransaction(tx))
         } catch (e: Throwable) {
@@ -143,9 +145,12 @@ object TxClient {
     }
 
     fun sendTr(txId: Id, source: Address, tr: Transfer) {
+        var id = txId
+        if (txId == (-1).toLong())
+            id = ZkRepository.getTimestamp()
         try {
             connectStub(tr.address)
-            stub.sendTr(trRequest(source, txId, tr))
+            stub.sendTr(trRequest(source, id, tr))
         } catch (e: Throwable) {
         println("### $e ###")
         } finally {

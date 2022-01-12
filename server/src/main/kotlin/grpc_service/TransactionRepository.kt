@@ -23,7 +23,7 @@ object TransactionRepository {
     fun insertTx(tx: Transaction) {
         //ZkRepository.txLock()
         txMap[tx.txId.id] = tx
-        txLedger.add(TxClient.ledgerTxEntry(zk.getTimestamp(), tx))
+        txLedger.add(TxClient.ledgerTxEntry(tx.txId.id, tx))
         //ZkRepository.txUnlock()
     }
 
@@ -86,7 +86,7 @@ object TransactionRepository {
         return utxos.fold(0.toLong()) {total, utxo -> total + utxo.value}
     }
 
-    fun removeUtxoByValue(address : Address, amount : Value) : Boolean {
+    fun removeUtxoByValue(txId: Id, address : Address, amount : Value) : Boolean {
         var totalAmount : Value = 0
         val utxoKeysToRemove : ArrayList<Id> = ArrayList()
         //val mutex = zk.utxoLock(address)
@@ -111,7 +111,7 @@ object TransactionRepository {
                 utxoMap[address]?.remove(utxoKey)
             }
             if (totalAmount > amount) {
-                addUtxo(-1, address, totalAmount - amount)
+                addUtxo(txId, address, totalAmount - amount)
             }
             //zk.utxoUnlock(mutex)
             return true
