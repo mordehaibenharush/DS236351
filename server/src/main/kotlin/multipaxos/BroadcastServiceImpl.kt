@@ -21,10 +21,9 @@ import grpc_service.ShardsRepository.getIp
 import grpc_service.ShardsRepository.getShardLeaderId
 import grpc_service.ShardsRepository.getShardLeaderIpFromId
 import grpc_service.TransactionRepository
-import grpc_service.TxClient
 import java.util.*
 
-enum class msgType {INSERT_TRANSACTION, INSERT_UTXO, DELETE_UTXO}
+enum class msgType {INSERT_TRANSACTION, INSERT_UTXO, DELETE_UTXO, SPEND_UTXO}
 
 fun main(args: Array<String>) {
     val tx = com.example.api.repository.model.Transaction(1,
@@ -204,16 +203,24 @@ object BroadcastServiceImpl : BroadcastServiceGrpc.BroadcastServiceImplBase() {
         val type = msgType.values()[msg.split('|').first().toInt()]
         val body = msg.split('|').last()
         when(type) {
-            msgType.INSERT_TRANSACTION -> {
+            msgType.INSERT_TRANSACTION ->
+            {
                 TransactionRepository.insertTx(msgToTransaction(body))
             }
-            msgType.INSERT_UTXO -> {
+            msgType.INSERT_UTXO ->
+            {
                 val trRequest = msgToTransfer(body)
                 TransactionRepository.insertUtxo(trRequest.txId.id, trRequest.tr.address, trRequest.tr.amount)
             }
-            msgType.DELETE_UTXO -> {
+            msgType.DELETE_UTXO ->
+            {
                 val trRequest = msgToTransfer(body)
                 TransactionRepository.removeUtxoByValue(trRequest.txId.id, trRequest.source, trRequest.tr.amount)
+            }
+            msgType.SPEND_UTXO ->
+            {
+                val trRequest = msgToTransfer(body)
+                TransactionRepository.spendUtxo(trRequest.source, trRequest.txId.id)
             }
         }
     }

@@ -146,8 +146,8 @@ object TxClient {
 
     fun sendTr(txId: Id, source: Address, tr: Transfer) {
         var id = txId
-        if (txId == (-1).toLong())
-            id = ZkRepository.getTimestamp()
+        /*if (txId == (-1).toLong())
+            id = ZkRepository.getTimestamp()*/
         try {
             connectStub(tr.address)
             stub.sendTr(trRequest(source, id, tr))

@@ -9,15 +9,17 @@ typealias Id = Long
 typealias Address = String
 typealias Value = Long
 typealias TimeStamp = Long
+typealias Used = Boolean
 
 object TransactionRepository {
     private var zk: ZkRepository = ZkRepository
     var txMap: HashMap<Id, Transaction> = HashMap()
-    var utxoMap: HashMap<Address, HashMap<Id, Utxo>> = HashMap()
+    //var utxoMap: HashMap<Address, HashMap<Id, Utxo>> = HashMap()
     var txLedger: ArrayList<LedgerTxEntry> = ArrayList()
+    var utxoMap: HashMap<Address, HashMap<Id, Pair<Utxo, Used>>> = HashMap()
 
     init {
-        utxoMap["0.0.0.0"] = hashMapOf(0.toLong() to TxClient.utxo(0, "0.0.0.0", Long.MAX_VALUE))
+        utxoMap["0.0.0.0"] = hashMapOf(0.toLong() to Pair(TxClient.utxo(0, "0.0.0.0", Long.MAX_VALUE), false))
     }
 
     fun insertTx(tx: Transaction) {
@@ -62,14 +64,18 @@ object TransactionRepository {
         var existingValue = 0.toLong()
         if (utxoMap[address] == null)
             utxoMap[address] = HashMap()
-        if (existsUtxo(address, txId))
-            existingValue = utxoMap[address]!![txId]!!.value
-        utxoMap[address]!![txId] = TxClient.utxo(txId, address, existingValue+value)
+/*        if (existsUtxo(address, txId))
+            existingValue = utxosMap[address]!![txId]!!.first.value*/
+        utxoMap[address]!![txId] = Pair(TxClient.utxo(txId, address, value), false)
     }
+
+    fun spentUtxo(address : Address, txId: Id) =
+        (existsUtxo(address, txId) && utxoMap[address]!![txId]!!.second)
 
     fun insertUtxo(txId: Id, address: Address, value: Value) {
         //val mutex = zk.utxoLock(address)
-        addUtxo(txId, address, value)
+        if (!spentUtxo(address, txId))
+            addUtxo(txId, address, value)
         //zk.utxoUnlock(mutex)
     }
 
@@ -77,10 +83,18 @@ object TransactionRepository {
         utxoMap[utxo.address]?.remove(utxo.txId.id)
     }
 
-    fun getUtxos(address: Address) : ArrayList<Utxo> {
+    fun spendUtxo(address : Address, txId: Id) {
+        if (!existsUtxo(address, txId))
+            addUtxo(txId, address, -1)
+
+        val utxo = utxoMap[address]!![txId]!!.first
+        utxoMap[address]!![txId] = Pair(utxo, true)
+    }
+
+    fun getUtxos(address: Address) : List<Utxo> {
         if (utxoMap[address] == null)
             return ArrayList()
-        return ArrayList(utxoMap[address]!!.values)
+        return ArrayList(utxoMap[address]!!.values.filter { !it.second }.map { it.first })
     }
 
     fun getTotalUtxosValue(address: Address) : Long {
@@ -89,6 +103,33 @@ object TransactionRepository {
     }
 
     fun removeUtxoByValue(txId: Id, address : Address, amount : Value) : Boolean {
+        var totalAmount : Value = 0
+        val utxoKeysToUse : ArrayList<Id> = ArrayList()
+        //val mutex = zk.utxoLock(address)
+
+        for (utxo in utxoMap[address].orEmpty().toList().filter { !it.second.second }.sortedBy { (_, pair) -> pair.first.value }.toMap()) {
+            utxoKeysToUse.add(utxo.key)
+            totalAmount += utxo.value.first.value
+
+            if (totalAmount >= amount)
+                break
+        }
+
+        if (totalAmount >= amount) {
+            for (utxoKey in utxoKeysToUse) {
+                spendUtxo(address, utxoKey)
+            }
+            if (totalAmount > amount) {
+                addUtxo(utxoKeysToUse.last(), address, totalAmount - amount)
+            }
+            //zk.utxoUnlock(mutex)
+            return true
+        }
+        //zk.utxoUnlock(mutex)
+        return false
+    }
+
+    /*fun removeUtxoByValue(txId: Id, address : Address, amount : Value) : Boolean {
         var totalAmount : Value = 0
         val utxoKeysToRemove : ArrayList<Id> = ArrayList()
         //val mutex = zk.utxoLock(address)
@@ -120,5 +161,5 @@ object TransactionRepository {
         }
         //zk.utxoUnlock(mutex)
         return false
-    }
+    }*/
 }
