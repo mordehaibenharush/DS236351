@@ -21,6 +21,7 @@ import grpc_service.ShardsRepository.getIp
 import grpc_service.ShardsRepository.getShardLeaderId
 import grpc_service.ShardsRepository.getShardLeaderIpFromId
 import grpc_service.TransactionRepository
+import grpc_service.TxClient
 import java.util.*
 
 enum class msgType {INSERT_TRANSACTION, INSERT_UTXO, DELETE_UTXO, SPEND_UTXO}
@@ -155,7 +156,7 @@ object BroadcastServiceImpl : BroadcastServiceGrpc.BroadcastServiceImplBase() {
     private fun CoroutineScope.startRecievingMessages(atomicBroadcast: AtomicBroadcast<String>) {
         launch {
             for ((`seq#`, msg) in atomicBroadcast.stream) {
-                println("Message #$`seq#`: ${msgType.values()[msg.split('|')[0].toInt()]}  received!")
+                println("Message #$`seq#`: ${msgType.values()[msg.split('|')[1].toInt()]}  received!")
                 msgDispatch(msg)
             }
         }
@@ -217,11 +218,15 @@ object BroadcastServiceImpl : BroadcastServiceGrpc.BroadcastServiceImplBase() {
             msgType.DELETE_UTXO ->
             {
                 val trRequest = msgToTransfer(body)
+                if (proposer == getIp())
+                    TxClient.commitTr(trRequest)
                 TransactionRepository.removeUtxoByValue(trRequest.txId.id, trRequest.source, trRequest.tr.amount)
             }
             msgType.SPEND_UTXO ->
             {
                 val trRequest = msgToTransfer(body)
+                if (proposer == getIp())
+                    TxClient.commitTr(trRequest)
                 TransactionRepository.spendUtxo(trRequest.source, trRequest.txId.id)
             }
         }

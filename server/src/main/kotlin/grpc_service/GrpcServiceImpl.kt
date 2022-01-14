@@ -73,6 +73,13 @@ object GrpcServiceImpl : TxServiceImplBase() {
         responseObserver.onCompleted()
     }
 
+    override fun commitTr(request: TrRequest, responseObserver: StreamObserver<Reply>) {
+        println("committing transfer ${request.txId}_${request.tr.address}")
+        ZkRepository.commitTransfer(request)
+        responseObserver.onNext(Reply.newBuilder().setAck(Ack.YES).build())
+        responseObserver.onCompleted()
+    }
+
     override fun insertTxList(request: TransactionList, responseObserver: StreamObserver<Empty>) {
         val totalBalance = transactionRepository.getTotalUtxosValue(request.txListList[0].inputsList[0].address)
         val totalInputsValue = request.txListList.fold(0.toLong())

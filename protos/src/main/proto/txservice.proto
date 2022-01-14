@@ -19,7 +19,7 @@ service TxService {
   rpc GetAllUtxo (Request) returns (UtxoList) {}
   rpc insertTxList (TransactionList) returns (google.protobuf.Empty) {}
   rpc GetLedger (Limit) returns (LedgerTxEntryList) {}
-  rpc setState (Ack) returns (Ack) {}
+  rpc commitTr (TrRequest) returns (Reply) {}
 }
 
 message TxId {
@@ -79,6 +79,11 @@ message Limit {
   uint64 limit = 1;
 }
 
-message Ack {
-  bool ack = 1;
+enum Ack {
+  YES = 0;
+  NO = 1;
+}
+
+message Reply {
+  Ack ack = 1;
 }

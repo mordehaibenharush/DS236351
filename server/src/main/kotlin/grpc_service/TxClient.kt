@@ -7,8 +7,8 @@ import cs236351.txservice.*
 import io.grpc.ManagedChannel
 import io.grpc.ManagedChannelBuilder
 import multipaxos.BroadcastServiceImpl
-import multipaxos.ZkRepository
 import org.springframework.http.HttpStatus
+import zk_service.ZkRepository
 import java.net.InetAddress
 import java.util.*
 import kotlin.collections.ArrayList
@@ -145,12 +145,11 @@ object TxClient {
     }
 
     fun sendTr(txId: Id, source: Address, tr: Transfer) {
-        var id = txId
-        /*if (txId == (-1).toLong())
-            id = ZkRepository.getTimestamp()*/
+        val request = trRequest(source, txId, tr)
+        ZkRepository.logTransfer(request)
         try {
             connectStub(tr.address)
-            stub.sendTr(trRequest(source, id, tr))
+            stub.sendTr(request)
         } catch (e: Throwable) {
         println("### $e ###")
         } finally {
@@ -173,6 +172,17 @@ object TxClient {
         try {
             connectStub(trRequest.source)
             stub.removeUtxo(trRequest)
+        } catch (e: Throwable) {
+            println("### $e ###")
+        } finally {
+            disconnectStub()
+        }
+    }
+
+    fun commitTr(trRequest: TrRequest) {
+        try {
+            connectStub(trRequest.source)
+            stub.commitTr(trRequest)
         } catch (e: Throwable) {
             println("### $e ###")
         } finally {

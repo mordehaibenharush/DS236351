@@ -181,14 +181,13 @@ object ZkRepository {
         }
     }
 
-    fun logTransfer(trRequest: TrRequest) : TimeStamp {
+    fun logTransfer(trRequest: TrRequest) {
         val seqNum = runBlocking {
             zk.create(trToLogEntry(trRequest)) {
                 data = 0.toString().toByteArray()
                 flags = Ephemeral
             }.first.let { ZKPaths.extractSequentialSuffix(it) }
         }
-        return seqNum.toLong()
     }
 
     fun logTransferEntry(logEntry: String) {
@@ -202,32 +201,30 @@ object ZkRepository {
 
     fun commitTransfer(trRequest: TrRequest) {
         runBlocking {
-            println(trToLogEntry(trRequest))
             zk.delete(trToLogEntry(trRequest))
         }
     }
 
     fun commitTransferEntry(logEntry: String) {
         runBlocking {
-            println(logEntry)
             zk.delete(logEntry)
         }
     }
 
-    suspend fun getLog(): List<String> = zk.getChildren(logPath).first
+    private suspend fun getLog(): List<String> = zk.getChildren(logPath).first
 
     fun queryLog() {
         runBlocking {
             while (true) {
-                delay(5_000)
-                if (/*ShardsRepository.leader()*/true) {
+                delay(10_000)
+                if (ShardsRepository.leader()) {
                     val entries = getLog()
                     for (entry in entries) {
                         val trRequest = logEntryToTr(entry)
                         val time = incLogTransfer(trRequest)
                         if (time > 3) {
-                            //TxClient.sendTr(trRequest.txId.id, trRequest.tr.address, trRequest.tr)
-                            println("##### ${trRequest.txId.id} timeout!!! #####")
+                            TxClient.sendTr(trRequest.txId.id, trRequest.source, trRequest.tr)
+                            println("##### ${trRequest.txId.id}-${trRequest.tr.address} timeout!!! #####")
                             resetLogTransfer(trRequest)
                         }
                     }

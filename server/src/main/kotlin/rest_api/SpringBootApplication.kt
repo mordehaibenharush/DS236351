@@ -31,15 +31,15 @@ fun main(args: Array<String>) {
 			launch { broadcast.start(-1) }
 		}
 	}
-	/*runBlocking {
-		delay(10000)
-		val ip = getIp()
-		for (i in 0..9)
-			BroadcastServiceImpl.send("*** $ip - $i ***")
-	}*/
 	CoroutineScope(Dispatchers.IO).launch {
 		runCatching{
 			TxServer.main(args)
+		}
+	}
+	CoroutineScope(Dispatchers.IO).launch {
+		runCatching{
+			val zk = ZkRepository
+			launch { zk.queryLog() }
 		}
 	}
 	runApplication<Main>(*args)
