@@ -145,7 +145,7 @@ object TxClient {
     }
 
     fun sendTr(txId: Id, source: Address, tr: Transfer) {
-        val request = trRequest(source, txId, tr)
+        val request = trRequest(source, ZkRepository.getTimestamp(), tr)
         ZkRepository.logTransfer(request)
         try {
             connectStub(tr.address)
@@ -157,10 +157,12 @@ object TxClient {
         }
     }
 
-    fun insertUtxo(trRequest: TrRequest) {
+    fun addUtxo(txId: Id, source: Address, tr: Transfer) {
+        val request = trRequest(source, txId, tr)
+        ZkRepository.logTransfer(request)
         try {
-            connectStub(trRequest.tr.address)
-            stub.sendTr(trRequest)
+            connectStub(request.tr.address)
+            stub.addUtxo(request)
         } catch (e: Throwable) {
             println("### $e ###")
         } finally {

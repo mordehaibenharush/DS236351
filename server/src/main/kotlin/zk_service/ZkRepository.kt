@@ -121,11 +121,7 @@ object ZkRepository {
 
     fun trRequest(source: Address, txId: Id, tr: Transfer) : TrRequest {
         return TrRequest.newBuilder().setSource(source).setTxId(TxId.newBuilder().setId(txId).build()).setTr(
-            transfer(
-                tr.address,
-                tr.amount
-            )
-        ).build()
+            transfer(tr.address, tr.amount)).build()
     }
 
     private fun trToLogEntry(trRequest: TrRequest) = "${logPath}/${trRequest.source}_${trRequest.txId.id}_${trRequest.tr.address}_${trRequest.tr.amount}"

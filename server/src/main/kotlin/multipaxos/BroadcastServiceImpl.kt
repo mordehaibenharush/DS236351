@@ -10,6 +10,7 @@ import cs236351.broadcast.BroadcastServiceGrpc
 import cs236351.broadcast.Msg
 import cs236351.broadcast.Transaction
 import cs236351.txservice.TrRequest
+import cs236351.txservice.Utxo
 import io.grpc.ManagedChannel
 import io.grpc.ManagedChannelBuilder
 import io.grpc.ServerBuilder
@@ -200,6 +201,14 @@ object BroadcastServiceImpl : BroadcastServiceGrpc.BroadcastServiceImplBase() {
         return Gson().fromJson(msg, TrRequest::class.java)
     }
 
+    fun utxoToMsg(utxo: Utxo) : String {
+        return Gson().toJson(utxo)
+    }
+
+    fun msgToUtxo(msg: String) : Utxo {
+        return Gson().fromJson(msg, Utxo::class.java)
+    }
+
     fun msgDispatch(msg: String) {
         val msgContents = msg.split('|')
         val proposer = msgContents[0]
@@ -213,6 +222,8 @@ object BroadcastServiceImpl : BroadcastServiceGrpc.BroadcastServiceImplBase() {
             msgType.INSERT_UTXO ->
             {
                 val trRequest = msgToTransfer(body)
+                if (proposer == getIp())
+                    TxClient.commitTr(trRequest)
                 TransactionRepository.insertUtxo(trRequest.txId.id, trRequest.tr.address, trRequest.tr.amount)
             }
             msgType.DELETE_UTXO ->
@@ -224,10 +235,8 @@ object BroadcastServiceImpl : BroadcastServiceGrpc.BroadcastServiceImplBase() {
             }
             msgType.SPEND_UTXO ->
             {
-                val trRequest = msgToTransfer(body)
-                if (proposer == getIp())
-                    TxClient.commitTr(trRequest)
-                TransactionRepository.spendUtxo(trRequest.source, trRequest.txId.id)
+                val utxo = msgToUtxo(body)
+                TransactionRepository.spendUtxo(utxo.address, utxo.txId.id, utxo.value)
             }
         }
     }

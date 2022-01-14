@@ -25,22 +25,29 @@ class ZookeeperKtClient(private val zk: ZooKeeper) : ZooKeeperKt {
         val stat = Stat()
         var createdPath: Path = ""
 
-        if (op.flags.hasTTL) {
-            val ttl = op.flags.TTL
-            createdPath = zkThreadContext {
-                catchKeeperExceptions(op.handlers) {
-                    zk.create(path, op.data, op.acl, mode, stat, ttl)!!
-                }?: "EMPTY"
+        try {
+            /*if (!exists(path).first)
+            return Pair(createdPath, stat)*/
+
+            if (op.flags.hasTTL) {
+                val ttl = op.flags.TTL
+                createdPath = zkThreadContext {
+                    catchKeeperExceptions(op.handlers) {
+                        zk.create(path, op.data, op.acl, mode, stat, ttl)!!
+                    } ?: "EMPTY"
+                }
+            } else {
+                createdPath = zkThreadContext {
+                    catchKeeperExceptions(op.handlers) {
+                        println("creating $path")
+                        val p = zk.create(path, op.data, op.acl, mode, stat)
+                        println("created $p")
+                        p!!
+                    } ?: "EMPTY"
+                }
             }
-        } else {
-            createdPath = zkThreadContext {
-                catchKeeperExceptions(op.handlers) {
-                    println("creating $path")
-                    val p= zk.create(path, op.data, op.acl, mode, stat)
-                    println("created $p")
-                    p!!
-                } ?: "EMPTY"
-            }
+        } catch (e: Throwable) {
+            println(e)
         }
         return Pair(createdPath, stat)
     }
@@ -60,11 +67,13 @@ class ZookeeperKtClient(private val zk: ZooKeeper) : ZooKeeperKt {
     override suspend fun delete(op: DeleteOperation) {
         val path = applyNamespace(op.path)
         val version: Int = op.version ?: -1
+        //if (exists(path).first) {
         zkThreadContext {
             catchKeeperExceptions(op.handlers) {
                 zk.delete(path, version)
             }
         }
+    //}
     }
 
     override suspend fun exists(op: CheckExistenceOperation): Pair<Boolean, Stat?> {
@@ -83,14 +92,22 @@ class ZookeeperKtClient(private val zk: ZooKeeper) : ZooKeeperKt {
 
     @Throws(KeeperException::class, InterruptedException::class)
     fun getZNodeData(path: String?, watchFlag: Boolean): Any? {
-        val b: ByteArray? = zk!!.getData(path, watchFlag, Stat())
-        return Charset.availableCharsets()["UTF-8"]?.let { String(b!!, it) }
+        try {
+            val b: ByteArray? = zk!!.getData(path, watchFlag, Stat())
+            return Charset.availableCharsets()["UTF-8"]?.let { String(b!!, it) }
+        } catch (e: Throwable) {
+            println(e)
+            return "0"
+        }
     }
 
-    @Throws(KeeperException::class, InterruptedException::class)
     fun updateZNodeData(path: String?, data: ByteArray?) {
-        val version = zk!!.exists(path, true).version
-        zk!!.setData(path, data, version)
+        try {
+            val version = zk!!.exists(path, true).version
+            zk!!.setData(path, data, version)
+        } catch (e: Throwable) {
+            println(e)
+        }
     }
 
     fun existsZNodeData(path: String?): Boolean {

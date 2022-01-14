@@ -76,6 +76,11 @@ object TransactionRepository {
         //val mutex = zk.utxoLock(address)
         if (!spentUtxo(address, txId))
             addUtxo(txId, address, value)
+        else {
+            val spent_val = getUtxo(address, txId).value
+            if (value > spent_val)
+            addUtxo(txId, address, value - spent_val)
+        }
         //zk.utxoUnlock(mutex)
     }
 
@@ -83,13 +88,18 @@ object TransactionRepository {
         utxoMap[utxo.address]?.remove(utxo.txId.id)
     }
 
-    fun spendUtxo(address : Address, txId: Id) {
+    fun spendUtxo(address : Address, txId: Id, amount: Value) {
         if (!existsUtxo(address, txId))
-            addUtxo(txId, address, -1)
+            addUtxo(txId, address, amount)
 
-        val utxo = utxoMap[address]!![txId]!!.first
-        utxoMap[address]!![txId] = Pair(utxo, true)
+        val utxo = getUtxo(address, txId)
+        if (utxo.value > amount)
+            addUtxo(txId, address, utxo.value - amount)
+        else
+            utxoMap[address]!![txId] = Pair(utxo, true)
     }
+
+    fun getUtxo(address: Address, txId: Id) = utxoMap[address]!![txId]!!.first
 
     fun getUtxos(address: Address) : List<Utxo> {
         if (utxoMap[address] == null)
@@ -117,7 +127,7 @@ object TransactionRepository {
 
         if (totalAmount >= amount) {
             for (utxoKey in utxoKeysToUse) {
-                spendUtxo(address, utxoKey)
+                spendUtxo(address, utxoKey, getUtxo(address, utxoKey).value)
             }
             if (totalAmount > amount) {
                 addUtxo(utxoKeysToUse.last(), address, totalAmount - amount)

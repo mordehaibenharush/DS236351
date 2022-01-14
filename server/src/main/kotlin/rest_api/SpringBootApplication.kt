@@ -27,6 +27,7 @@ fun main(args: Array<String>) {
 	}
 	CoroutineScope(Dispatchers.IO).launch {
 		runCatching{
+			//delay(5_000)
 			val broadcast = BroadcastServiceImpl
 			launch { broadcast.start(-1) }
 		}

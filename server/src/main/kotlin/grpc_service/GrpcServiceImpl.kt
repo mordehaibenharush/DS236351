@@ -14,10 +14,11 @@ object GrpcServiceImpl : TxServiceImplBase() {
     override fun insertTx(request: Transaction, responseObserver: StreamObserver<Empty>) {
         //ZkRepository.lock()
         BroadcastServiceImpl.send(msgType.INSERT_TRANSACTION, BroadcastServiceImpl.transactionToMsg(request))
-        //transactionRepository.insertTx(request)
+        for (utxo in request.inputsList) {
+            BroadcastServiceImpl.send(msgType.SPEND_UTXO, BroadcastServiceImpl.utxoToMsg(utxo))
+        }
         for (tr in request.outputsList) {
-            TxClient.sendTr(request.txId.id, request.inputsList[0].address, tr)
-            /*transactionRepository.removeUtxoByValue(request.inputsList[0].address, tr.amount)*/
+            TxClient.addUtxo(request.txId.id, request.inputsList[0].address, tr)
         }
         //ZkRepository.unlock()
         responseObserver.onNext(Empty.newBuilder().build())
@@ -45,21 +46,27 @@ object GrpcServiceImpl : TxServiceImplBase() {
     }
 
     override fun sendTr(request: TrRequest, responseObserver: StreamObserver<Empty>) {
-        var req = request
+        /*var req = request
         if (request.txId.id == (-1).toLong())
-            req = TxClient.trRequest(request.source, ZkRepository.getTimestamp(), request.tr)
-        BroadcastServiceImpl.send(msgType.INSERT_UTXO, BroadcastServiceImpl.transferToMsg(req))
-        //transactionRepository.insertUtxo(request.txId.id, request.tr.address, request.tr.amount)
+            req = TxClient.trRequest(request.source, ZkRepository.getTimestamp(), request.tr)*/
+        BroadcastServiceImpl.send(msgType.INSERT_UTXO, BroadcastServiceImpl.transferToMsg(request))
+        //if (request.txId.id == (-1).toLong())
         TxClient.removeUtxo(request)
         responseObserver.onNext(TxClient.empty())
         responseObserver.onCompleted()
     }
 
+    override fun addUtxo(request: TrRequest, responseObserver: StreamObserver<Empty>) {
+        BroadcastServiceImpl.send(msgType.INSERT_UTXO, BroadcastServiceImpl.transferToMsg(request))
+        responseObserver.onNext(TxClient.empty())
+        responseObserver.onCompleted()
+    }
+
     override fun removeUtxo(request: TrRequest, responseObserver: StreamObserver<Empty>) {
-        if (request.txId.id == (-1).toLong())
-            BroadcastServiceImpl.send(msgType.DELETE_UTXO, BroadcastServiceImpl.transferToMsg(request))
-        else
-            BroadcastServiceImpl.send(msgType.SPEND_UTXO, BroadcastServiceImpl.transferToMsg(request))
+        //if (/*request.txId.id == (-1).toLong()*/true)
+        BroadcastServiceImpl.send(msgType.DELETE_UTXO, BroadcastServiceImpl.transferToMsg(request))
+        /*else
+            BroadcastServiceImpl.send(msgType.SPEND_UTXO, BroadcastServiceImpl.transferToMsg(request))*/
         //transactionRepository.removeUtxoByValue(request.source, request.tr.amount)
         responseObserver.onNext(TxClient.empty())
         responseObserver.onCompleted()
