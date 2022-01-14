@@ -1,8 +1,10 @@
 package zk_service
 
-import grpc_service.Address
-import grpc_service.Shard
-import grpc_service.ShardsRepository
+import com.example.api.repository.model.Transfer
+import cs236351.txservice.TrRequest
+import cs236351.txservice.TxId
+import cs236351.txservice.trRequest
+import grpc_service.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import java.net.InetAddress
@@ -12,20 +14,17 @@ typealias TimeStamp = Long
 
 fun main(args: Array<String>) {
     val zkr = ZkRepository
-    runBlocking {
-            zkr.txLock()
-            println(args[0])
-            delay(20000)
-            zkr.txUnlock()
-            println("${args[0]} unlocked")
-        /*launch {
-            zkr.lock()
-            println("22222222")
-            delay(10000)
-            zkr.unlock()
-            println("222 unlocked")
-        }*/
+    zkr.logTransferEntry(
+         "/log/0.0.0.0_1_0.0.0.1_999"
+    )
+    zkr.logTransferEntry(
+        "/log/0.0.0.2_3_0.0.0.3_222"
+    )
+    CoroutineScope(Dispatchers.IO).launch {
+        zkr.queryLog()
     }
+    runBlocking { delay(10_000) }
+    zkr.commitTransferEntry("/log/0.0.0.0_1_0.0.0.1_999")
 }
 
 object ZkRepository {
@@ -38,7 +37,7 @@ object ZkRepository {
     //var utxoMutexMap = hashMapOf<Address, ZKMutex>()
     //private val shardsPath : Array<String> = arrayOf("1",)
     private val globalClockPath : String = "/clock/"
-    private val leadersIpPath : String = "/leaders/"
+    private val logPath : String = "/log"
 
     /*fun updateLeader(shard: Shard, address: Address) {
         if (!(zk.existsZNodeData(leadersIpPath + shard.toString()))) {
@@ -116,6 +115,27 @@ object ZkRepository {
         }
     }
 
+    fun transfer(address: Address, amount: Value) : cs236351.txservice.Transfer {
+        return cs236351.txservice.Transfer.newBuilder().setAddress(address).setAmount(amount).build()
+    }
+
+    fun trRequest(source: Address, txId: Id, tr: Transfer) : TrRequest {
+        return TrRequest.newBuilder().setSource(source).setTxId(TxId.newBuilder().setId(txId).build()).setTr(
+            transfer(
+                tr.address,
+                tr.amount
+            )
+        ).build()
+    }
+
+    private fun trToLogEntry(trRequest: TrRequest) = "${logPath}/${trRequest.source}_${trRequest.txId.id}_${trRequest.tr.address}_${trRequest.tr.amount}"
+    private fun logEntryToTr(logEntry: String): TrRequest {
+        val entryComponents = logEntry.split('_')
+        val txId = entryComponents[1].toLong()
+        val tr = Transfer(entryComponents[0], entryComponents[2], entryComponents[3].toLong())
+        return trRequest(tr.source, txId, tr)
+    }
+
     init {
         initialize()
         initMembers()
@@ -140,6 +160,80 @@ object ZkRepository {
             }.first.let { ZKPaths.extractSequentialSuffix(it) }
         }
         return seqNum.toLong()
+    }
+
+    fun incLogTransfer(trRequest: TrRequest) : TimeStamp {
+        var ts = 0
+        runBlocking {
+            if (zk.exists(trToLogEntry(trRequest)).first) {
+                ts = zk.getZNodeData(trToLogEntry(trRequest), false).toString().toInt() + 1
+                zk.updateZNodeData(trToLogEntry(trRequest), ts.toString().toByteArray())
+            }
+        }
+        return ts.toLong()
+    }
+
+    fun resetLogTransfer(trRequest: TrRequest) {
+        runBlocking {
+            if (zk.exists(trToLogEntry(trRequest)).first) {
+                zk.updateZNodeData(trToLogEntry(trRequest), 0.toString().toByteArray())
+            }
+        }
+    }
+
+    fun logTransfer(trRequest: TrRequest) : TimeStamp {
+        val seqNum = runBlocking {
+            zk.create(trToLogEntry(trRequest)) {
+                data = 0.toString().toByteArray()
+                flags = Ephemeral
+            }.first.let { ZKPaths.extractSequentialSuffix(it) }
+        }
+        return seqNum.toLong()
+    }
+
+    fun logTransferEntry(logEntry: String) {
+        val seqNum = runBlocking {
+            zk.create(logEntry) {
+                data = 0.toString().toByteArray()
+                flags = Ephemeral
+            }.first.let { ZKPaths.extractSequentialSuffix(it) }
+        }
+    }
+
+    fun commitTransfer(trRequest: TrRequest) {
+        runBlocking {
+            println(trToLogEntry(trRequest))
+            zk.delete(trToLogEntry(trRequest))
+        }
+    }
+
+    fun commitTransferEntry(logEntry: String) {
+        runBlocking {
+            println(logEntry)
+            zk.delete(logEntry)
+        }
+    }
+
+    suspend fun getLog(): List<String> = zk.getChildren(logPath).first
+
+    fun queryLog() {
+        runBlocking {
+            while (true) {
+                delay(5_000)
+                if (/*ShardsRepository.leader()*/true) {
+                    val entries = getLog()
+                    for (entry in entries) {
+                        val trRequest = logEntryToTr(entry)
+                        val time = incLogTransfer(trRequest)
+                        if (time > 3) {
+                            //TxClient.sendTr(trRequest.txId.id, trRequest.tr.address, trRequest.tr)
+                            println("##### ${trRequest.txId.id} timeout!!! #####")
+                            resetLogTransfer(trRequest)
+                        }
+                    }
+                }
+            }
+        }
     }
 
     fun join() {

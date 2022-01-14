@@ -162,7 +162,7 @@ object BroadcastServiceImpl : BroadcastServiceGrpc.BroadcastServiceImplBase() {
     }
 
     fun send(type: msgType, prop: String) {
-        val msg = type.ordinal.toString() + "|" + prop
+        val msg = getIp() + "|" + type.ordinal.toString() + "|" + prop
         CoroutineScope(Dispatchers.IO).launch {
                 println("Adding Proposal - $type")
                 atomicBroadcast.send(msg)
@@ -200,8 +200,10 @@ object BroadcastServiceImpl : BroadcastServiceGrpc.BroadcastServiceImplBase() {
     }
 
     fun msgDispatch(msg: String) {
-        val type = msgType.values()[msg.split('|').first().toInt()]
-        val body = msg.split('|').last()
+        val msgContents = msg.split('|')
+        val proposer = msgContents[0]
+        val type = msgType.values()[msgContents[1].toInt()]
+        val body = msgContents[2]
         when(type) {
             msgType.INSERT_TRANSACTION ->
             {

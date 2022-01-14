@@ -1,10 +1,12 @@
 package zk_service
 
 import kotlinx.coroutines.*
+import org.apache.zookeeper.KeeperException
 import org.apache.zookeeper.ZooKeeper
 import org.apache.zookeeper.data.Stat
 import java.util.concurrent.Executors
 import org.apache.zookeeper.Watcher
+import java.nio.charset.Charset
 
 typealias Path = String
 typealias ZName = String
@@ -68,12 +70,38 @@ class ZookeeperKtClient(private val zk: ZooKeeper) : ZooKeeperKt {
     override suspend fun exists(op: CheckExistenceOperation): Pair<Boolean, Stat?> {
         val path = applyNamespace(op.path)
         val watcher: Watcher? = op.watchers.all?.toZKWatcher()
-        val stat = zkThreadContext {
-            catchKeeperExceptions(op.handlers) {
-                zk.exists(path, watcher)
+        var stat : Stat? = null
+        kotlin.runCatching {
+            stat = zkThreadContext {
+                catchKeeperExceptions(op.handlers) {
+                    zk.exists(path, watcher)
+                }
             }
         }
         return Pair(stat != null, stat)
+    }
+
+    @Throws(KeeperException::class, InterruptedException::class)
+    fun getZNodeData(path: String?, watchFlag: Boolean): Any? {
+        val b: ByteArray? = zk!!.getData(path, watchFlag, Stat())
+        return Charset.availableCharsets()["UTF-8"]?.let { String(b!!, it) }
+    }
+
+    @Throws(KeeperException::class, InterruptedException::class)
+    fun updateZNodeData(path: String?, data: ByteArray?) {
+        val version = zk!!.exists(path, true).version
+        zk!!.setData(path, data, version)
+    }
+
+    fun existsZNodeData(path: String?): Boolean {
+        return (zk!!.exists(path, false) != null);
+    }
+
+    @Throws(KeeperException::class, InterruptedException::class)
+    fun deleteZNodeData(path: String?) {
+        zk!!.delete(
+            path, -1
+        )
     }
 
 }

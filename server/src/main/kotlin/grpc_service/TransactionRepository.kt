@@ -107,7 +107,7 @@ object TransactionRepository {
         val utxoKeysToUse : ArrayList<Id> = ArrayList()
         //val mutex = zk.utxoLock(address)
 
-        for (utxo in utxoMap[address].orEmpty().toList().filter { !it.second.second }.sortedBy { (_, pair) -> pair.first.value }.toMap()) {
+        for (utxo in utxoMap[address].orEmpty().toList().filter { !it.second.second }.sortedByDescending { (_, pair) -> pair.first.value }.toMap()) {
             utxoKeysToUse.add(utxo.key)
             totalAmount += utxo.value.first.value
 

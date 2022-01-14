@@ -28,12 +28,9 @@ object ShardsRepository {
     fun getShardIpName() = "${shardNum}-${InetAddress.getLocalHost().hostAddress}"
     fun getShardFromName(name: String) = Shard.values()[name.split('-')[0].toInt()]
     fun getIpFromName(name: String) = name.split('-')[1]
-    fun getIp(): String {
-        return InetAddress.getLocalHost().hostAddress
-    }
-    fun getId(address: Address) : ID {
-        return address.split('.').last().toInt()
-    }
+    fun getIp(): String = InetAddress.getLocalHost().hostAddress
+    fun getId(address: Address) : ID = address.split('.').last().toInt()
+    fun leader() = (getIp() == getShardLeaderIp(getIp()))
 
     fun setIps(members: ZChildren) {
         ips.forEach { l -> l.value.clear() }
