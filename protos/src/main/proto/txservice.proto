@@ -8,12 +8,12 @@ option java_package = "cs236351.txservice";
 package cs236351.txservice;
 
 service TxService {
-  rpc InsertTx (Transaction) returns (google.protobuf.Empty) {}
+  rpc InsertTx (Transaction) returns (Reply) {}
   rpc deleteTx (TxId) returns (google.protobuf.Empty) {}
   rpc ExistsTx (TxId) returns (Exists) {}
   rpc GetTx (TxId) returns (Transaction) {}
   rpc GetAllTx (Request) returns (TransactionList) {}
-  rpc SendTr (TrRequest) returns (google.protobuf.Empty) {}
+  rpc SendTr (TrRequest) returns (Reply) {}
   rpc AddUtxo (TrRequest) returns (google.protobuf.Empty) {}
   rpc RemoveUtxo (TrRequest) returns (google.protobuf.Empty) {}
   rpc RedeemTr (TrRequest) returns (UtxoList) {}

@@ -38,7 +38,7 @@ class TransactionController(private val transactionService: TransactionService) 
         TxClient.getAllTransactions(address, limit)
 
     @PostMapping("/transaction")
-    fun submitTransaction(@RequestBody payload: Transaction): Unit =
+    fun submitTransaction(@RequestBody payload: Transaction) =
         TxClient.submitTransaction(payload)
 
     @PostMapping("/transactions")
@@ -50,7 +50,7 @@ class TransactionController(private val transactionService: TransactionService) 
         TxClient.getAllUnspentTxOutput(address)
 
     @PostMapping("/transfer")
-    fun submitTransfer(@RequestBody payload: Transfer): Unit =
+    fun submitTransfer(@RequestBody payload: Transfer) =
         TxClient.submitTransfer(payload)
 
     /*@GetMapping("/transactions/{id}")

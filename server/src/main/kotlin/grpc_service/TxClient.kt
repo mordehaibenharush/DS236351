@@ -120,16 +120,18 @@ object TxClient {
         return TransactionList.newBuilder().addAllTxList(txList.map { toClientTransaction(it) }).build()
     }
 
-    fun insertTx(tx: com.example.api.repository.model.Transaction) {
+    fun insertTx(tx: com.example.api.repository.model.Transaction): String {
+        var res = Ack.NO
         try {
             tx.id = ZkRepository.getTimestamp()
             connectStub(tx.inputs[0].address)
-            stub.insertTx(toClientTransaction(tx))
+            res = stub.insertTx(toClientTransaction(tx)).ack
         } catch (e: Throwable) {
             println("### $e ###")
         } finally {
             disconnectStub()
         }
+        return if (res == Ack.YES) "success" else "fail"
     }
 
     private fun deleteTx(txId: Id) {
@@ -144,17 +146,19 @@ object TxClient {
         return fromClientTransaction(this.stub.getTx(txid(txId)))
     }
 
-    fun sendTr(txId: Id, source: Address, tr: Transfer) {
+    fun sendTr(txId: Id, source: Address, tr: Transfer): String {
+        var res = Ack.NO
         val request = trRequest(source, ZkRepository.getTimestamp(), tr)
-        ZkRepository.logTransfer(request)
+        //ZkRepository.logTransfer(request)
         try {
             connectStub(tr.address)
-            stub.sendTr(request)
+            res = stub.sendTr(request).ack
         } catch (e: Throwable) {
         println("### $e ###")
         } finally {
             disconnectStub()
         }
+        return if (res == Ack.YES) "success" else "fail"
     }
 
     fun addUtxo(txId: Id, source: Address, tr: Transfer) {
@@ -284,17 +288,5 @@ object TxClient {
 
     fun submitTransfer(transfer: com.example.api.repository.model.Transfer) {
         this.sendTr(-1, transfer.source, transfer(transfer.address, transfer.amount))
-    }
-
-    fun updateTransactionById(txId: Long, transaction: com.example.api.repository.model.Transaction) {
-        return if (this.existsTx(txId)) {
-            this.insertTx(transaction)
-        } else throw EmployeeNotFoundException(HttpStatus.NOT_FOUND, "No matching employee was found")
-    }
-
-    fun deleteTransactionById(txId: Long) {
-        return if (this.existsTx(txId)) {
-            this.deleteTx(txId)
-        } else throw EmployeeNotFoundException(HttpStatus.NOT_FOUND, "No matching employee was found")
     }
 }

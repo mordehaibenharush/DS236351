@@ -11,17 +11,26 @@ import zk_service.ZkRepository
 object GrpcServiceImpl : TxServiceImplBase() {
     private val transactionRepository = TransactionRepository
 
-    override fun insertTx(request: Transaction, responseObserver: StreamObserver<Empty>) {
+    override fun insertTx(request: Transaction, responseObserver: StreamObserver<Reply>) {
         //ZkRepository.lock()
-        BroadcastServiceImpl.send(msgType.INSERT_TRANSACTION, BroadcastServiceImpl.transactionToMsg(request))
+        var res = Ack.YES
         for (utxo in request.inputsList) {
-            BroadcastServiceImpl.send(msgType.SPEND_UTXO, BroadcastServiceImpl.utxoToMsg(utxo))
+            if (transactionRepository.spentUtxo(utxo.address, utxo.txId.id)) {
+                res = Ack.NO
+                break
+            }
         }
-        for (tr in request.outputsList) {
-            TxClient.addUtxo(request.txId.id, request.inputsList[0].address, tr)
+        if (res == Ack.YES) {
+            BroadcastServiceImpl.send(msgType.INSERT_TRANSACTION, BroadcastServiceImpl.transactionToMsg(request))
+            for (utxo in request.inputsList) {
+                BroadcastServiceImpl.send(msgType.SPEND_UTXO, BroadcastServiceImpl.utxoToMsg(utxo))
+            }
+            for (tr in request.outputsList) {
+                TxClient.addUtxo(request.txId.id, request.inputsList[0].address, tr)
+            }
         }
         //ZkRepository.unlock()
-        responseObserver.onNext(Empty.newBuilder().build())
+        responseObserver.onNext(Reply.newBuilder().setAck(res).build())
         responseObserver.onCompleted()
     }
 
@@ -45,14 +54,20 @@ object GrpcServiceImpl : TxServiceImplBase() {
         responseObserver.onCompleted()
     }
 
-    override fun sendTr(request: TrRequest, responseObserver: StreamObserver<Empty>) {
+    override fun sendTr(request: TrRequest, responseObserver: StreamObserver<Reply>) {
+        var res = Ack.NO
         /*var req = request
         if (request.txId.id == (-1).toLong())
             req = TxClient.trRequest(request.source, ZkRepository.getTimestamp(), request.tr)*/
-        BroadcastServiceImpl.send(msgType.INSERT_UTXO, BroadcastServiceImpl.transferToMsg(request))
-        //if (request.txId.id == (-1).toLong())
-        TxClient.removeUtxo(request)
-        responseObserver.onNext(TxClient.empty())
+        if (transactionRepository.getTotalUtxosValue(request.source) >= request.tr.amount) {
+            BroadcastServiceImpl.send(msgType.DELETE_UTXO, BroadcastServiceImpl.transferToMsg(request))
+            ZkRepository.logTransfer(request)
+            //BroadcastServiceImpl.send(msgType.INSERT_UTXO, BroadcastServiceImpl.transferToMsg(request))
+            //if (request.txId.id == (-1).toLong())
+            TxClient.addUtxo(request.txId.id, request.tr.address, request.tr)
+            res = Ack.YES
+        }
+        responseObserver.onNext(Reply.newBuilder().setAck(res).build())
         responseObserver.onCompleted()
     }
 

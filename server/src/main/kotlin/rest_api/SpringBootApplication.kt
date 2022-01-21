@@ -40,7 +40,7 @@ fun main(args: Array<String>) {
 	CoroutineScope(Dispatchers.IO).launch {
 		runCatching{
 			val zk = ZkRepository
-			launch { zk.queryLog() }
+			//launch { zk.queryLog() }
 		}
 	}
 	runApplication<Main>(*args)
