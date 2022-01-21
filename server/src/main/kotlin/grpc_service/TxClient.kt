@@ -151,7 +151,7 @@ object TxClient {
         val request = trRequest(source, ZkRepository.getTimestamp(), tr)
         //ZkRepository.logTransfer(request)
         try {
-            connectStub(tr.address)
+            connectStub(source)
             res = stub.sendTr(request).ack
         } catch (e: Throwable) {
         println("### $e ###")
