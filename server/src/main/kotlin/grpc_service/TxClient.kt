@@ -148,9 +148,8 @@ object TxClient {
 
     fun sendTr(txId: Id, source: Address, tr: Transfer): String {
         var res = Ack.NO
-        val request = trRequest(source, ZkRepository.getTimestamp(), tr)
-        //ZkRepository.logTransfer(request)
         try {
+            val request = trRequest(source, ZkRepository.getTimestamp(), tr)
             connectStub(source)
             res = stub.sendTr(request).ack
         } catch (e: Throwable) {
@@ -230,7 +229,6 @@ object TxClient {
         val ledger = ArrayList<LedgerTxEntry>()
         try {
             for (ips in shardRepository.ips.values) {
-                println(ips[0])
                 connectStub(ips[0])
                 ledger += ArrayList(stub.getLedger(null).txListList)
                 disconnectStub()

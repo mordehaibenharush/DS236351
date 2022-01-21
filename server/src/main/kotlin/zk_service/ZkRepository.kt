@@ -14,7 +14,17 @@ typealias TimeStamp = Long
 
 fun main(args: Array<String>) {
     val zkr = ZkRepository
-    zkr.logTransferEntry(
+    val m = zkr.initMutex()
+    CoroutineScope(Dispatchers.IO).launch {
+        launch {
+            m.lock()
+            println("${args[0]} got the lock!!!")
+            delay(20_000)
+            println("${args[0]} releasing lock...")
+            m.unlock()
+        }
+    }
+    /*zkr.logTransferEntry(
          "/log/0.0.0.0_1_0.0.0.1_999"
     )
     zkr.logTransferEntry(
@@ -24,7 +34,7 @@ fun main(args: Array<String>) {
         zkr.queryLog()
     }
     runBlocking { delay(10_000) }
-    zkr.commitTransferEntry("/log/0.0.0.0_1_0.0.0.1_999")
+    zkr.commitTransferEntry("/log/0.0.0.0_1_0.0.0.1_999")*/
 }
 
 object ZkRepository {
@@ -109,9 +119,9 @@ object ZkRepository {
         }
     }
 
-    private fun initMutex() {
-        runBlocking {
-            txMutex = ZKMutex.make(zk, "tx-lock")
+    fun initMutex(): ZKMutex {
+        return runBlocking {
+            return@runBlocking ZKMutex.make(zk, "tx-lock")
         }
     }
 
@@ -135,7 +145,7 @@ object ZkRepository {
     init {
         initialize()
         initMembers()
-        initMutex()
+        //initMutex()
         //join()
         /*val chan = Channel<Unit>()
         val zk = ZooKeeper("localhost:9000", 1000) { event ->
@@ -255,18 +265,18 @@ object ZkRepository {
         }
     }
 
-    fun txLock() {
+    fun txLock(mutex: ZKMutex) {
         runBlocking {
             try {
-                txMutex.lock()
+                mutex.lock()
             } catch (e: IllegalStateException) {
                 println(e)
             }
         }
     }
 
-    fun txUnlock() {
-        runBlocking { txMutex.unlock() }
+    fun txUnlock(mutex: ZKMutex) {
+        runBlocking { mutex.unlock() }
     }
 
     fun utxoLock(address: Address) : ZKMutex {

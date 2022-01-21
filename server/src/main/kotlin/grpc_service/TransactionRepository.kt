@@ -73,7 +73,7 @@ object TransactionRepository {
         (existsUtxo(address, txId) && utxoMap[address]!![txId]!!.second)
 
     fun insertUtxo(txId: Id, address: Address, value: Value) {
-        //val mutex = zk.utxoLock(address)
+        val mutex = zk.utxoLock(address)
         if (!spentUtxo(address, txId))
             addUtxo(txId, address, value)
         else {
@@ -81,14 +81,16 @@ object TransactionRepository {
             if (value > spent_val)
             addUtxo(txId, address, value - spent_val)
         }
-        //zk.utxoUnlock(mutex)
+        zk.utxoUnlock(mutex)
     }
 
-    fun deleteUtxo(address : Address, utxo: Utxo) {
-        utxoMap[utxo.address]?.remove(utxo.txId.id)
+    fun deleteUtxo(address : Address, txId: Id) {
+        val utxo = getUtxo(address, txId)
+        utxoMap[address]!![txId] = Pair(utxo, true)
     }
 
     fun spendUtxo(address : Address, txId: Id, amount: Value) {
+        val mutex = zk.utxoLock(address)
         if (!existsUtxo(address, txId))
             addUtxo(txId, address, amount)
 
@@ -97,6 +99,7 @@ object TransactionRepository {
             addUtxo(txId, address, utxo.value - amount)
         else
             utxoMap[address]!![txId] = Pair(utxo, true)
+        zk.utxoUnlock(mutex)
     }
 
     fun getUtxo(address: Address, txId: Id) = utxoMap[address]!![txId]!!.first
@@ -115,7 +118,7 @@ object TransactionRepository {
     fun removeUtxoByValue(txId: Id, address : Address, amount : Value) : Boolean {
         var totalAmount : Value = 0
         val utxoKeysToUse : ArrayList<Id> = ArrayList()
-        //val mutex = zk.utxoLock(address)
+        val mutex = zk.utxoLock(address)
 
         for (utxo in utxoMap[address].orEmpty().toList().filter { !it.second.second }.sortedByDescending { (_, pair) -> pair.first.value }.toMap()) {
             utxoKeysToUse.add(utxo.key)
@@ -127,15 +130,15 @@ object TransactionRepository {
 
         if (totalAmount >= amount) {
             for (utxoKey in utxoKeysToUse) {
-                spendUtxo(address, utxoKey, getUtxo(address, utxoKey).value)
+                deleteUtxo(address, utxoKey)
             }
             if (totalAmount > amount) {
                 addUtxo(utxoKeysToUse.last(), address, totalAmount - amount)
             }
-            //zk.utxoUnlock(mutex)
+            zk.utxoUnlock(mutex)
             return true
         }
-        //zk.utxoUnlock(mutex)
+        zk.utxoUnlock(mutex)
         return false
     }
 
