@@ -237,7 +237,7 @@ object ZkRepository {
         CoroutineScope(Dispatchers.IO).launch {
             runCatching{
                 membership.join(ShardsRepository.getShardIpName())
-                queryMembers()
+                //queryMembers()
             }
         }
     }

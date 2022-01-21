@@ -286,7 +286,5 @@ object TxClient {
         }
     }
 
-    fun submitTransfer(transfer: com.example.api.repository.model.Transfer) {
-        this.sendTr(-1, transfer.source, transfer(transfer.address, transfer.amount))
-    }
+    fun submitTransfer(transfer: com.example.api.repository.model.Transfer) = this.sendTr(-1, transfer.source, transfer(transfer.address, transfer.amount))
 }

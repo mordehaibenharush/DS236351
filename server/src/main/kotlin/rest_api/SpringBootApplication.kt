@@ -17,9 +17,13 @@ fun main(args: Array<String>) {
 		runCatching{
 			val zk = ZkRepository
 			launch { zk.join() }
+			launch { zk.queryMembers() }
+			val broadcast = BroadcastServiceImpl
+			launch { broadcast.start(-1) }
+			launch { zk.queryLog() }
 		}
 	}
-	CoroutineScope(Dispatchers.IO).launch {
+	/*CoroutineScope(Dispatchers.IO).launch {
 		runCatching{
 			val zk = ZkRepository
 			launch { zk.queryMembers() }
@@ -31,17 +35,17 @@ fun main(args: Array<String>) {
 			val broadcast = BroadcastServiceImpl
 			launch { broadcast.start(-1) }
 		}
-	}
+	}*/
 	CoroutineScope(Dispatchers.IO).launch {
 		runCatching{
 			TxServer.main(args)
 		}
 	}
-	CoroutineScope(Dispatchers.IO).launch {
+	/*CoroutineScope(Dispatchers.IO).launch {
 		runCatching{
-			val zk = ZkRepository
+			//val zk = ZkRepository
 			//launch { zk.queryLog() }
 		}
-	}
+	}*/
 	runApplication<Main>(*args)
 }
