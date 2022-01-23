@@ -24,6 +24,7 @@ import grpc_service.ShardsRepository.getShardLeaderIpFromId
 import grpc_service.TransactionRepository
 import grpc_service.TxClient
 import java.util.*
+import kotlin.collections.ArrayList
 
 enum class msgType {INSERT_TRANSACTION, INSERT_UTXO, DELETE_UTXO, SPEND_UTXO}
 
@@ -61,6 +62,7 @@ object BroadcastServiceImpl : BroadcastServiceGrpc.BroadcastServiceImplBase() {
     lateinit var chans:  Map<ID, ManagedChannel>
     lateinit var stub: BroadcastServiceGrpc.BroadcastServiceBlockingStub
     var channelStack: Stack<ManagedChannel> = Stack()
+    val msgList = ArrayList<String>()
 
     val omega = object : OmegaFailureDetector<ID> {
         override val leader: ID get() = getShardLeaderId(getIp())
@@ -133,7 +135,10 @@ object BroadcastServiceImpl : BroadcastServiceGrpc.BroadcastServiceImplBase() {
             proposer.start()
 
             println("$id - started broadcast service")
-            withContext(Dispatchers.IO) { startRecievingMessages(atomicBroadcast) }
+            withContext(Dispatchers.IO) {
+                launch { startRecievingMessages(atomicBroadcast) }
+                launch { pollSendMessages() }
+            }
 
             withContext(Dispatchers.IO) { // Operations that block the current thread should be in a IO context
                 server.awaitTermination()
@@ -163,11 +168,31 @@ object BroadcastServiceImpl : BroadcastServiceGrpc.BroadcastServiceImplBase() {
         }
     }
 
+    private fun CoroutineScope.pollSendMessages() {
+        launch {
+            while (true) {
+                delay(5_000)
+                if (msgList.isNotEmpty()) {
+                    for (msg in msgList) {
+                        atomicBroadcast.send(msg)
+                    }
+                    msgList.clear()
+                }
+            }
+        }
+    }
+
     fun send(type: msgType, prop: String) {
         val msg = getIp() + "|" + type.ordinal.toString() + "|" + prop
+        msgList.add(msg)
         CoroutineScope(Dispatchers.IO).launch {
-                println("Adding Proposal - $type")
-                atomicBroadcast.send(msg)
+            println("Adding Proposal - $type")
+            if (msgList.size > 5) {
+                for (msg in msgList) {
+                    atomicBroadcast.send(msg)
+                }
+                msgList.clear()
+            }
         }
     }
 
