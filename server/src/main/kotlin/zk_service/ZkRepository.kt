@@ -7,6 +7,7 @@ import cs236351.txservice.trRequest
 import grpc_service.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
+import org.apache.zookeeper.KeeperException
 import java.net.InetAddress
 
 typealias TimeStamp = Long
@@ -46,7 +47,7 @@ object ZkRepository {
     lateinit var txMutex: ZKMutex
     //var utxoMutexMap = hashMapOf<Address, ZKMutex>()
     //private val shardsPath : Array<String> = arrayOf("1",)
-    private val globalClockPath : String = "/clock/"
+    private val globalClockPath : String = "/clock"
     private val logPath : String = "/log"
 
     /*fun updateLeader(shard: Shard, address: Address) {
@@ -125,6 +126,27 @@ object ZkRepository {
         }
     }
 
+    fun initClock() {
+        runBlocking {
+            if (!zk.exists(globalClockPath).first) {
+                zk.create(globalClockPath) {
+                    flags = Persistent
+                }
+            }
+        }
+    }
+
+    fun initLog() {
+        runBlocking {
+            if (!zk.exists(logPath).first) {
+                zk.create(logPath) {
+                    flags = Persistent
+                }
+            }
+        }
+    }
+
+
     fun transfer(address: Address, amount: Value) : cs236351.txservice.Transfer {
         return cs236351.txservice.Transfer.newBuilder().setAddress(address).setAmount(amount).build()
     }
@@ -145,6 +167,8 @@ object ZkRepository {
     init {
         initialize()
         initMembers()
+        initClock()
+        initLog()
         //initMutex()
         //join()
         /*val chan = Channel<Unit>()
@@ -161,7 +185,7 @@ object ZkRepository {
 
     fun getTimestamp() : TimeStamp {
         val seqNum = runBlocking {
-            zk.create(globalClockPath + "ts-") {
+            zk.create("$globalClockPath/ts-") {
                 flags = Ephemeral and Sequential
             }.first.let { ZKPaths.extractSequentialSuffix(it) }
         }
