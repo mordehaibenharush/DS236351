@@ -105,11 +105,11 @@ object BroadcastServiceImpl : BroadcastServiceGrpc.BroadcastServiceImplBase() {
                 }
                 override fun _deliver(byteString: ByteString) = listOf(biSerializer(byteString))
             }
-            println("$id - about to start internal server")
+            //println("$id - about to start internal server")
             withContext(Dispatchers.IO) { // Operations that block the current thread should be in a IO context
                 server.start()
             }
-            println("$id - internal server started")
+            //println("$id - internal server started")
             // Create channels with clients
             chans = getShardIds(id)/*listOf(0,1,3)*/!!.associateWith {
                 ManagedChannelBuilder.forAddress(getIpFromId(it)/*"localhost"*/, 9010).usePlaintext().build()!!
@@ -128,11 +128,11 @@ object BroadcastServiceImpl : BroadcastServiceGrpc.BroadcastServiceImplBase() {
                 id = id, omegaFD = omega, scope = this, acceptors = chans,
                 thisLearner = learnerService,
             )
-            println("$id - about to start proposer")
+            //println("$id - about to start proposer")
             // Starts The proposer
             proposer.start()
 
-            println("$id - about to start receiver")
+            println("$id - started broadcast service")
             withContext(Dispatchers.IO) { startRecievingMessages(atomicBroadcast) }
 
             withContext(Dispatchers.IO) { // Operations that block the current thread should be in a IO context

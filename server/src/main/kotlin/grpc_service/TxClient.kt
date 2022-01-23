@@ -48,13 +48,14 @@ object TxClient {
         //this.channel.shutdown()
     }
 
-    private fun connectStub(address: Address)  {
+    private fun connectStub(address: Address): TxServiceGrpc.TxServiceBlockingStub {
         val ip = shardRepository.getShardLeaderIp(address)
         val channel =  ManagedChannelBuilder.forAddress(ip, 8090)
             .usePlaintext()
             .build()
         this.stub = TxServiceGrpc.newBlockingStub(channel)
         channelStack.push(channel)
+        return this.stub
     }
 
     private fun disconnectStub() {

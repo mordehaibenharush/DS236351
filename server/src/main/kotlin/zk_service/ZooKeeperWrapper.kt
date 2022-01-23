@@ -39,9 +39,9 @@ class ZookeeperKtClient(private val zk: ZooKeeper) : ZooKeeperKt {
             } else {
                 createdPath = zkThreadContext {
                     catchKeeperExceptions(op.handlers) {
-                        println("creating $path")
+                        //println("creating $path")
                         val p = zk.create(path, op.data, op.acl, mode, stat)
-                        println("created $p")
+                        //println("created $p")
                         p!!
                     } ?: "EMPTY"
                 }

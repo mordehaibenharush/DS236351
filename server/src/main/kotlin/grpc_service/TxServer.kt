@@ -13,6 +13,7 @@ object TxServer {
             .forPort(8090)
             .addService(GrpcServiceImpl).build()
         server.start()
+        println("started tx manager service")
         server.awaitTermination()
     }
 }
