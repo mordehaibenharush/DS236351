@@ -25,7 +25,7 @@ import grpc_service.TransactionRepository
 import grpc_service.TxClient
 import java.util.*
 
-enum class msgType {INSERT_TRANSACTION, INSERT_UTXO, DELETE_UTXO, SPEND_UTXO}
+enum class msgType {INSERT_TRANSACTION, INSERT_UTXO, DELETE_UTXO, SPEND_UTXO, ROLLBACK_UTXO}
 
 fun main(args: Array<String>) {
     val tx = com.example.api.repository.model.Transaction(1,
@@ -237,6 +237,11 @@ object BroadcastServiceImpl : BroadcastServiceGrpc.BroadcastServiceImplBase() {
             {
                 val utxo = msgToUtxo(body)
                 TransactionRepository.spendUtxo(utxo.address, utxo.txId.id, utxo.value)
+            }
+            msgType.ROLLBACK_UTXO ->
+            {
+                val utxo = msgToUtxo(body)
+                TransactionRepository.addUtxo(utxo.txId.id, utxo.address, utxo.value)
             }
         }
     }

@@ -11,6 +11,17 @@ import zk_service.ZkRepository
 object GrpcServiceImpl : TxServiceImplBase() {
     private val transactionRepository = TransactionRepository
 
+    fun executeTx(tx: Transaction) {
+        val tx = TxClient.transaction(ZkRepository.getTimestamp(), tx.inputsList, tx.outputsList)
+        BroadcastServiceImpl.send(msgType.INSERT_TRANSACTION, BroadcastServiceImpl.transactionToMsg(tx))
+        for (utxo in tx.inputsList) {
+            BroadcastServiceImpl.send(msgType.SPEND_UTXO, BroadcastServiceImpl.utxoToMsg(utxo))
+        }
+        for (tr in tx.outputsList) {
+            TxClient.addUtxo(tx.txId.id, tx.inputsList[0].address, tr)
+        }
+    }
+
     override fun insertTx(request: Transaction, responseObserver: StreamObserver<Reply>) {
         //ZkRepository.lock()
         var res = Ack.YES
@@ -21,13 +32,14 @@ object GrpcServiceImpl : TxServiceImplBase() {
             }
         }
         if (res == Ack.YES) {
-            BroadcastServiceImpl.send(msgType.INSERT_TRANSACTION, BroadcastServiceImpl.transactionToMsg(request))
+            executeTx(request)
+            /*BroadcastServiceImpl.send(msgType.INSERT_TRANSACTION, BroadcastServiceImpl.transactionToMsg(request))
             for (utxo in request.inputsList) {
                 BroadcastServiceImpl.send(msgType.SPEND_UTXO, BroadcastServiceImpl.utxoToMsg(utxo))
             }
             for (tr in request.outputsList) {
                 TxClient.addUtxo(request.txId.id, request.inputsList[0].address, tr)
-            }
+            }*/
         }
         //ZkRepository.unlock()
         responseObserver.onNext(Reply.newBuilder().setAck(res).build())
@@ -103,7 +115,7 @@ object GrpcServiceImpl : TxServiceImplBase() {
     }
 
     override fun insertTxList(request: TransactionList, responseObserver: StreamObserver<Empty>) {
-        val totalBalance = transactionRepository.getTotalUtxosValue(request.txListList[0].inputsList[0].address)
+        /*val totalBalance = transactionRepository.getTotalUtxosValue(request.txListList[0].inputsList[0].address)
         val totalInputsValue = request.txListList.fold(0.toLong())
             {total1, Tx -> total1 + (Tx.inputsList.fold(0.toLong()) {total2, utxo -> total2 + utxo.value}) }
         if (totalInputsValue < totalBalance) {
@@ -112,11 +124,63 @@ object GrpcServiceImpl : TxServiceImplBase() {
                 transactionRepository.insertTx(tx)
                 for (tr in tx.outputsList) {
                     TxClient.sendTr(tx.txId.id, tx.inputsList[0].address, tr)
-                    /*transactionRepository.removeUtxoByValue(request.inputsList[0].address, tr.amount)*/
+                    *//*transactionRepository.removeUtxoByValue(request.inputsList[0].address, tr.amount)*//*
                 }
             }
             //ZkRepository.txUnlock()
+        }*/
+        var commit = true
+        val ip = ShardsRepository.getIp()
+        for (tx in request.txListList) {
+            println("${tx.inputsList[0].address} - ${ShardsRepository.getShardLeaderIp(tx.inputsList[0].address)}")
+            if (ShardsRepository.getShardLeaderIp(tx.inputsList[0].address) == ip) {
+                for (utxo in tx.inputsList) {
+                    if (transactionRepository.spentUtxo(utxo.address, utxo.txId.id)) {
+                        commit = false
+                        //transactionRepository.rollbackTxList(request.txListList)
+                        println("$ip - voting abort!")
+                        ZkRepository.vote2pc(request.id, ip, "abort")
+                        break
+                    }
+                    else {
+                        transactionRepository.spendUtxo(utxo.address, utxo.txId.id, utxo.value)
+                    }
+                }
+            }
+            if (!commit) break
         }
+        if (commit) {
+            println("$ip - voting commit!")
+            ZkRepository.vote2pc(request.id, ip, "commit")
+        }
+
+        commit = ZkRepository.poll2pc(request.id)
+        if (commit) {
+            println("committed!!!")
+            for (tx in request.txListList) {
+                if (ShardsRepository.getShardLeaderIp(tx.inputsList[0].address) == ip) {
+                    executeTx(tx)
+                    println("submitting tx for ${tx.inputsList[0].address} leader ${ShardsRepository.getShardLeaderIp(tx.inputsList[0].address)}")
+                }
+            }
+        }
+        else {
+            for (tx in request.txListList) {
+                if (ShardsRepository.getShardLeaderIp(tx.inputsList[0].address) == ip) {
+                    for (utxo in tx.inputsList) {
+                        BroadcastServiceImpl.send(msgType.ROLLBACK_UTXO, BroadcastServiceImpl.utxoToMsg(utxo))
+                    }
+                }
+            }
+        }
+            /*for (tx in request.txListList) {
+                if (ShardsRepository.getShardLeaderIp(tx.inputsList[0].address) == ip) {
+                    transactionRepository.insertTx(tx)
+                    for (utxo in tx.inputsList) {
+                        transactionRepository.insertUtxo(utxo.txId.id, utxo.address, utxo.value)
+                    }
+                }
+            }*/
         responseObserver.onNext(Empty.newBuilder().build())
         responseObserver.onCompleted()
     }

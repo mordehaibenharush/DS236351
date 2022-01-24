@@ -6,6 +6,7 @@ import com.google.protobuf.Empty
 import cs236351.txservice.*
 import io.grpc.ManagedChannel
 import io.grpc.ManagedChannelBuilder
+import kotlinx.coroutines.*
 import multipaxos.BroadcastServiceImpl
 import org.springframework.http.HttpStatus
 import zk_service.ZkRepository
@@ -53,9 +54,10 @@ object TxClient {
         val channel =  ManagedChannelBuilder.forAddress(ip, 8090)
             .usePlaintext()
             .build()
-        this.stub = TxServiceGrpc.newBlockingStub(channel)
+        val createdStub = TxServiceGrpc.newBlockingStub(channel)
+        this.stub = createdStub
         channelStack.push(channel)
-        return this.stub
+        return createdStub
     }
 
     private fun disconnectStub() {
@@ -92,7 +94,7 @@ object TxClient {
         return Transfer.newBuilder().setAddress(address).setAmount(amount).build()
     }
 
-    private fun transaction(id: Id, inputs: List<Utxo>, outputs: List<Transfer>) : Transaction {
+    fun transaction(id: Id, inputs: List<Utxo>, outputs: List<Transfer>) : Transaction {
         val txId : TxId = TxId.newBuilder().setId(id).build()
         return Transaction.newBuilder().setTxId(txId).addAllInputs(inputs).addAllOutputs(outputs).build()
     }
@@ -117,14 +119,14 @@ object TxClient {
         return com.example.api.repository.model.Transaction(tx.txId.id, inputs, outputs)
     }
 
-    private fun toClientTransactionList(txList: List<com.example.api.repository.model.Transaction>) : TransactionList {
-        return TransactionList.newBuilder().addAllTxList(txList.map { toClientTransaction(it) }).build()
+    private fun toClientTransactionList(id: Long, txList: List<com.example.api.repository.model.Transaction>) : TransactionList {
+        return TransactionList.newBuilder().addAllTxList(txList.map { toClientTransaction(it) }).setId(id).build()
     }
 
     fun insertTx(tx: com.example.api.repository.model.Transaction): String {
         var res = Ack.NO
         try {
-            tx.id = ZkRepository.getTimestamp()
+            //tx.id = ZkRepository.getTimestamp()
             connectStub(tx.inputs[0].address)
             res = stub.insertTx(toClientTransaction(tx)).ack
         } catch (e: Throwable) {
@@ -276,8 +278,22 @@ object TxClient {
 
     fun submitTransactionList(txList: List<com.example.api.repository.model.Transaction>) {
         try {
-            connectStub(txList[0].inputs[0].address)
-            stub.insertTxList(toClientTransactionList(txList))
+            val id = ZkRepository.initiate2pc()
+            //val tasks = ArrayList<Deferred<Unit>>()
+            runBlocking {
+                for (ip in ShardsRepository.getShardsLeadersIp()) {
+                    CoroutineScope(Dispatchers.Default).launch {
+                        connectStub(ip).insertTxList(toClientTransactionList(id, txList))
+                        //println(ip)
+                        //stub.insertTxList(toClientTransactionList(id, txList))
+                        disconnectStub()
+                    }
+                    //tasks.add(task)
+                }
+                /*for (task in tasks) {
+                    task.await()
+                }*/
+            }
         } catch (e: Throwable) {
             println("### $e ###")
         } finally {

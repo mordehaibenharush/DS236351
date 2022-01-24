@@ -25,7 +25,9 @@ object TransactionRepository {
     fun insertTx(tx: Transaction) {
         //ZkRepository.txLock()
         txMap[tx.txId.id] = tx
-        txLedger.add(TxClient.ledgerTxEntry(tx.txId.id, tx))
+        val entry = TxClient.ledgerTxEntry(tx.txId.id, tx)
+        if (!txLedger.contains(entry))
+            txLedger.add(entry)
         //ZkRepository.txUnlock()
     }
 
@@ -60,7 +62,7 @@ object TransactionRepository {
         return utxoMap[address]!!.contains(txId)
     }
 
-    private fun addUtxo(txId: Id, address: Address, value: Value) {
+    fun addUtxo(txId: Id, address: Address, value: Value) {
         var existingValue = 0.toLong()
         if (utxoMap[address] == null)
             utxoMap[address] = HashMap()
@@ -140,6 +142,20 @@ object TransactionRepository {
         }
         zk.utxoUnlock(mutex)
         return false
+    }
+
+    fun rollbackUtxo(txId: Id, address: Address, value: Value) {
+        if (spentUtxo(address, txId))
+            addUtxo(txId, address, value)
+        /*for (tx in txList) {
+            val entry = TxClient.ledgerTxEntry(tx.txId.id, tx)
+            if (txLedger.contains(entry)) {
+                txLedger.remove(entry)
+                for (utxo in tx.inputsList) {
+                    addUtxo(utxo.txId.id, utxo.address, utxo.value)
+                }
+            }
+        }*/
     }
 
     /*fun removeUtxoByValue(txId: Id, address : Address, amount : Value) : Boolean {

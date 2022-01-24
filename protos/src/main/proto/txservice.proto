@@ -54,7 +54,8 @@ message LedgerTxEntryList {
 }
 
 message TransactionList {
-  repeated Transaction txList = 1;
+  int64 id = 1;
+  repeated Transaction txList = 2;
 }
 
 message UtxoList {

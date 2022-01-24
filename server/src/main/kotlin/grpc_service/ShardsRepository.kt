@@ -31,6 +31,7 @@ object ShardsRepository {
     fun getIp(): String = InetAddress.getLocalHost().hostAddress
     fun getId(address: Address) : ID = address.split('.').last().toInt()
     fun leader() = (getIp() == getShardLeaderIp(getIp()))
+    fun numShards() = ips.size
 
     fun setIps(members: ZChildren) {
         ips.forEach { l -> l.value.clear() }
@@ -46,6 +47,14 @@ object ShardsRepository {
     fun getShardLeaderIp(address: Address) : Address {
         val shard = Shard.values()[address.split('.').last().toInt().mod(Shard.values().size)]
         return ips[shard]!![0]
+    }
+
+    fun getShardsLeadersIp(): List<Address> {
+        val leaderIps = ArrayList<Address>()
+        for (shard in Shard.values()) {
+            leaderIps.add(ips[shard]!![0])
+        }
+        return leaderIps
     }
 
     fun getShardLeaderId(address: Address) : ID {

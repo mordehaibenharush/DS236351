@@ -15,15 +15,24 @@ typealias TimeStamp = Long
 
 fun main(args: Array<String>) {
     val zkr = ZkRepository
-    val m = zkr.initMutex()
+    //val m = zkr.initMutex()
     CoroutineScope(Dispatchers.IO).launch {
-        launch {
+        /*launch {
             m.lock()
             println("${args[0]} got the lock!!!")
             delay(20_000)
             println("${args[0]} releasing lock...")
             m.unlock()
-        }
+        }*/
+        println("1")
+        if (args[0] == "0")
+            zkr.initiate2pc()
+        println("2")
+        zkr.vote2pc(1, "0.0.0.${args[0]}", "commit")
+        println("3")
+        val commit = zkr.poll2pc(1)
+        println("4")
+        println(commit)
     }
     /*zkr.logTransferEntry(
          "/log/0.0.0.0_1_0.0.0.1_999"
@@ -49,6 +58,7 @@ object ZkRepository {
     //private val shardsPath : Array<String> = arrayOf("1",)
     private val globalClockPath : String = "/clock"
     private val logPath : String = "/log"
+    private val twoPcPath: String = "/twopc"
 
     /*fun updateLeader(shard: Shard, address: Address) {
         if (!(zk.existsZNodeData(leadersIpPath + shard.toString()))) {
@@ -146,6 +156,16 @@ object ZkRepository {
         }
     }
 
+    fun init2pc() {
+        runBlocking {
+            if (!zk.exists(twoPcPath).first) {
+                zk.create(twoPcPath) {
+                    flags = Persistent
+                }
+            }
+        }
+    }
+
 
     fun transfer(address: Address, amount: Value) : cs236351.txservice.Transfer {
         return cs236351.txservice.Transfer.newBuilder().setAddress(address).setAmount(amount).build()
@@ -169,6 +189,7 @@ object ZkRepository {
         initMembers()
         initClock()
         initLog()
+        init2pc()
         //initMutex()
         //join()
         /*val chan = Channel<Unit>()
@@ -317,5 +338,51 @@ object ZkRepository {
 
     fun utxoUnlock(utxoMutex: ZKMutex) {
         runBlocking { utxoMutex.unlock() }
+    }
+
+    fun initiate2pc(): Long {
+        val id = getTimestamp()
+        runBlocking {
+            zk.create {
+                path = "$twoPcPath/$id"
+                data = 0.toString().toByteArray()
+                flags = Persistent
+            }
+        }
+        return id
+    }
+
+    fun vote2pc(id: Long, address: Address, vote: String) {
+        runBlocking {
+            zk.create {
+                path = "$twoPcPath/$id/${address}_$vote"
+                flags = Ephemeral
+            }
+        }
+    }
+
+    fun poll2pc(id: Long): Boolean {
+        return runBlocking {
+            var sync = false
+            var commit = true
+            for (i in 0..10) {
+                delay(2_000)
+                val replies = zk.getChildren("$twoPcPath/$id")
+                /*println("#########################################")
+                println(replies)
+                println("#########################################")*/
+                if (replies.first.size == ShardsRepository.numShards()) {
+                    sync = true
+                    for (reply in replies.first) {
+                        if (reply.split('_').last() == "abort") {
+                            commit = false
+                            break
+                        }
+                    }
+                    break
+                }
+            }
+            return@runBlocking !(!sync || !commit)
+        }
     }
 }
