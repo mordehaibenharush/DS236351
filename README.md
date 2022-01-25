@@ -13,6 +13,7 @@
 * Client address space devided to 2 shards, each shard has 3 replicated nodes to support leader failure
 * State replication maintained in shard with leader atomic broadcasts list of operations made to the replicas
 * All nodes in system accept client http requests and route the request to the appropiate leader responsible for client's account shard
+* Supports transaction list atomic submission
 * Each transaction is added to log initially and removed from log on completion (that way if leader fails mid-way the newley elected leader can continue him according to log)
 * Each node has a dedicated thread which polls log and re-transmits operation that has timedout (then we assume operation didn't happen because of node failure)
 * Utxos double spending is prevented using locking Zookeeper mechanism
